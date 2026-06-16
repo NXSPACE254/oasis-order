@@ -20,14 +20,14 @@
 
     <div id="entrance-stage" class="block">
         <p class="text-sm text-gray-600 mb-2 text-center">請點擊下方品牌圖示查看介紹：</p>
-        <canvas id="brandCanvas" width="360" height="160" class="mx-auto touch-none"></canvas>
+        <canvas id="brandCanvas" width="360" height="180" class="mx-auto touch-none"></canvas>
         
         <div id="brand-card" class="hidden mt-4 p-5 bg-white rounded-xl shadow-sm border border-gray-100">
             <h2 id="card-title" class="text-xl font-bold text-gray-800"></h2>
             <p id="card-desc" class="text-sm text-gray-600 my-3 leading-relaxed"></p>
             <div class="flex space-x-4 mb-4 text-xs text-blue-600 font-medium">
-                <a id="link-ig" href="#" target="_blank">📸 Instagram</a>
-                <a id="link-fb" href="#" target="_blank">🔗 粉絲專頁</a>
+                <a id="link-ig" href="#" target="_blank" rel="noopener noreferrer">📸 Instagram</a>
+                <a id="link-fb" href="#" target="_blank" rel="noopener noreferrer">🔗 粉絲專頁</a>
             </div>
             <button id="go-order-btn" class="w-full bg-black text-white text-sm py-3 rounded-lg font-medium tracking-wide hover:bg-gray-800 transition">
                 進入點餐介面
@@ -78,8 +78,7 @@
 
             <div class="border-t border-b border-gray-100 py-4 my-4">
                 <p class="font-bold text-gray-800 mb-3 text-base">🍽️ 線上菜單（可多選）</p>
-                <div id="menu_list_container" class="space-y-1">
-                    </div>
+                <div id="menu_list_container" class="space-y-1"></div>
             </div>
 
             <div>
@@ -100,7 +99,9 @@
                 id: "yu-tian",
                 name: "雨田燻",
                 desc: "🤠類德州燒烤 Tex-ish BBQ｜😋臺東風味 Taitung Flavor｜❤️‍🔥偏移式煙燻爐 Offset Smoker",
-                ig: "https://www.instagram.com/956leissmoker/", fb: "https://www.facebook.com/profile.php?id=100090128882932&locale=zh_TW",
+                ig: "https://www.instagram.com/956leissmoker/", 
+                fb: "https://www.facebook.com/profile.php?id=100090128882932&locale=zh_TW",
+                imgUrl: "assets/yu-tian.jpg", // 👈 請放上雨田燻的 LOGO 或招牌美照路徑
                 canCustomize: false,
                 menu: [
                     { name: "牛頰肉 Beef Cheek", price: 350 },
@@ -112,7 +113,9 @@
                 id: "to-the-pizza",
                 name: "TO THE PIZZA 來去披薩",
                 desc: "Neapolitan Pizza on Wheels • Taitung",
-                ig: "https://www.instagram.com/tothepizza/", fb: "https://www.facebook.com/tothepizza?locale=zh_TW",
+                ig: "https://www.instagram.com/tothepizza/", 
+                fb: "https://www.facebook.com/tothepizza?locale=zh_TW",
+                imgUrl: "assets/to-the-pizza.jpg", // 👈 請放上來去披薩的 LOGO 或招牌美照路徑
                 canCustomize: true,
                 customOptions: [
                     { name: "洋蔥", price: 20 },
@@ -134,190 +137,17 @@
         const canvas = document.getElementById('brandCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 繪製 Canvas 頂部兩個大品牌圓鈕
-        function drawCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // 左圓：雨田燻
-            ctx.beginPath(); ctx.arc(90, 80, 55, 0, Math.PI * 2);
-            ctx.fillStyle = selectedBrand?.id === 'yu-tian' ? '#111827' : '#E5E7EB'; ctx.fill();
-            ctx.fillStyle = selectedBrand?.id === 'yu-tian' ? '#FFFFFF' : '#374151';
-            ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('雨田燻', 90, 85);
+        // ✨ 升級：建置圖片資源與預載入機制
+        const brandImages = {};
+        let loadedCount = 0;
 
-            // 右圓：TO THE PIZZA
-            ctx.beginPath(); ctx.arc(270, 80, 55, 0, Math.PI * 2);
-            ctx.fillStyle = selectedBrand?.id === 'to-the-pizza' ? '#111827' : '#E5E7EB'; ctx.fill();
-            ctx.fillStyle = selectedBrand?.id === 'to-the-pizza' ? '#FFFFFF' : '#374151';
-            ctx.fillText('TO THE PIZZA', 270, 85);
-        }
-
-        // 點擊 Canvas 圓鈕觸發事件
-        canvas.addEventListener('click', function(event) {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left; const y = event.clientY - rect.top;
-            if (Math.sqrt((x-90)**2 + (y-80)**2) < 55) { showBrandCard(brands[0]); } 
-            else if (Math.sqrt((x-270)**2 + (y-80)**2) < 55) { showBrandCard(brands[1]); }
-        });
-
-        function showBrandCard(brand) {
-            selectedBrand = brand; drawCanvas();
-            document.getElementById('brand-card').classList.remove('hidden');
-            document.getElementById('card-title').innerText = brand.name;
-            document.getElementById('card-desc').innerText = brand.desc;
-        }
-
-        // 點擊黑按鈕跳轉至點餐區
-        document.getElementById('go-order-btn').addEventListener('click', function() {
-            document.getElementById('entrance-stage').classList.add('hidden');
-            document.getElementById('order-stage').classList.remove('hidden');
-            document.getElementById('order-target').innerText = "預訂目標商店：" + selectedBrand.name;
-            
-            const menuContainer = document.getElementById('menu_list_container');
-            menuContainer.innerHTML = "";
-            
-            selectedBrand.menu.forEach((item, index) => {
-                let itemDiv = document.createElement('div');
-                itemDiv.className = "menu-item flex flex-col py-3";
-                
-                let topRow = document.createElement('div');
-                topRow.className = "flex justify-between items-center w-full";
-                topRow.innerHTML = `
-                    <div>
-                        <span class="font-medium text-gray-800">${item.name}</span>
-                        <span class="text-xs text-emerald-600 block">$${item.price} 元</span>
-                    </div>
-                    <select name="qty_${index}" onchange="togglePizzaOptions(${index}, this.value)" class="border border-gray-300 rounded p-1 text-xs bg-white focus:border-black">
-                        <option value="0">0 (未點)</option>
-                        <option value="1">1份</option>
-                        <option value="2">2份</option>
-                        <option value="3">3份</option>
-                        <option value="4">4份</option>
-                        <option value="5">5份</option>
-                    </select>
-                `;
-                itemDiv.appendChild(topRow);
-                
-                if (selectedBrand.canCustomize) {
-                    let optDiv = document.createElement('div');
-                    optDiv.id = `pizza_opt_box_${index}`;
-                    optDiv.className = "hidden mt-3 p-2.5 bg-gray-50 rounded-lg text-xs space-y-2 text-gray-500 border border-gray-100";
-                    optDiv.innerHTML = `<p class="font-semibold text-gray-700">↳ 客製化加料 (可多選，費用以單份累計)：</p>`;
-                    
-                    selectedBrand.customOptions.forEach((opt, optIdx) => {
-                        optDiv.innerHTML += `
-                            <label class="flex items-center space-x-2 mt-1 cursor-pointer">
-                                <input type="checkbox" name="opt_${index}_${optIdx}" value="${opt.name}" data-price="${opt.price}" class="rounded text-black focus:ring-black">
-                                <span>+ ${opt.name} (+$${opt.price}元)</span>
-                            </label>
-                        `;
-                    });
-                    itemDiv.appendChild(optDiv);
+        brands.forEach(b => {
+            brandImages[b.id] = new Image();
+            brandImages[b.id].src = b.imgUrl;
+            brandImages[b.id].onload = () => {
+                loadedCount++;
+                if (loadedCount === brands.length) {
+                    drawCanvas(); // 所有圖片載入完畢後繪製 Canvas
                 }
-                menuContainer.appendChild(itemDiv);
-            });
-        });
-
-        function togglePizzaOptions(index, qty) {
-            const optBox = document.getElementById(`pizza_opt_box_${index}`);
-            if (optBox) {
-                if (parseInt(qty) > 0) {
-                    optBox.classList.remove('hidden');
-                } else {
-                    optBox.classList.add('hidden');
-                    const checkboxes = optBox.querySelectorAll('input[type="checkbox"]');
-                    checkboxes.forEach(cb => cb.checked = false);
-                }
-            }
-        }
-
-        function backToEntrance() {
-            document.getElementById('order-stage').classList.add('hidden');
-            document.getElementById('entrance-stage').classList.remove('hidden');
-        }
-
-        drawCanvas();
-
-        // 唯一下單送出與發送函式 (已帶入您的專屬 Google 網址)
-        document.getElementById('menuForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            let finalOrderItems = [];
-            let totalAmount = 0;
-
-            selectedBrand.menu.forEach((item, index) => {
-                const qtySelect = document.querySelector(`select[name="qty_${index}"]`);
-                const qty = parseInt(qtySelect.value);
-                
-                if (qty > 0) {
-                    let itemDescription = `${item.name} x ${qty}`;
-                    let itemPriceSum = item.price * qty;
-                    let addedOptions = [];
-
-                    if (selectedBrand.canCustomize) {
-                        selectedBrand.customOptions.forEach((opt, optIdx) => {
-                            const cb = document.querySelector(`input[name="opt_${index}_${optIdx}"]`);
-                            if (cb && cb.checked) {
-                                addedOptions.push(opt.name);
-                                itemPriceSum += (opt.price * qty);
-                            }
-                        });
-                    }
-
-                    if (addedOptions.length > 0) {
-                        itemDescription += ` [加料: ${addedOptions.join('+')}]`;
-                    } else if (selectedBrand.canCustomize) {
-                        itemDescription += ` [原味無加料]`;
-                    }
-
-                    finalOrderItems.push(itemDescription);
-                    totalAmount += itemPriceSum;
-                }
-            });
-
-            if (finalOrderItems.length === 0) {
-                alert("❌ 請至少選擇一項餐點再送出！");
-                return;
-            }
-
-            const orderData = {
-                brand: selectedBrand.name,
-                name: document.getElementById('cust_name').value,
-                phone: document.getElementById('cust_phone').value,
-                date: document.getElementById('pickup_date').value,
-                time: document.getElementById('pickup_time').value,
-                order_content: finalOrderItems.join(' ｜ '),
-                total: totalAmount,
-                note: document.getElementById('order_note').value || "無"
             };
-
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerText = "訂單傳送中...";
-
-            // 已填入您提供的正式 Google 部署網址
-            const gas_url = "https://script.google.com/macros/s/AKfycbz2OSGlYoUryM6Ql3jjR1pakFDpWm0PwqsAIpo59liFFZa-6HlHuQHpF4XLXvXoNBpz/exec";
-
-            fetch(gas_url, {
-                method: "POST",
-                mode: "no-cors",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(orderData)
-            })
-            .then(() => {
-                alert(`🎉 預訂成功！\n\n您的取餐時間：${orderData.date} ${orderData.time}\n餐點已同步至 ${orderData.brand} 後台。\n\n應付總金額：$${orderData.total} 元\n\n⚠️ 提醒：現場付款時主動出示問卷填寫完成畫面，可享現場現折 10 元優惠！`);
-                document.getElementById('menuForm').reset();
-                backToEntrance();
-            })
-            .catch(err => {
-                alert("❌ 系統忙碌中，請直接洽詢現場工作人員。");
-                console.error(err);
-            })
-            .finally(() => {
-                submitBtn.disabled = false;
-                submitBtn.innerText = "送出預訂單";
-            });
-        });
-    </script>
-</body>
-</html>
+            // 防呆：如果圖片沒讀
