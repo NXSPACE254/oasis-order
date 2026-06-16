@@ -14,8 +14,8 @@
 <body class="p-4 max-w-md mx-auto">
 
     <div class="text-center my-6">
-        <h1 class="text-2xl font-bold tracking-wider text-gray-800">NX SPACE</h1>
-        <p class="text-xs text-gray-500 mt-1">OASIS PROJECT / 綠洲預點系統</p>
+        <h1 class="text-2xl font-bold tracking-wider text-gray-800">NX SPACE 馜享空間</h1>
+        <p class="text-xs text-gray-500 mt-1">綠洲場預點系統</p>
     </div>
 
     <div id="entrance-stage" class="block">
@@ -99,8 +99,8 @@
             {
                 id: "yu-tian",
                 name: "雨田燻",
-                desc: "專注於職人風乾與獨家木屑慢火燻製料理。為您帶來層次豐富、香氣濃郁的台東在地美學輕食體驗。",
-                ig: "https://instagram.com/", fb: "https://facebook.com/",
+                desc: "🤠類德州燒烤 Tex-ish BBQ｜😋臺東風味 Taitung Flavor｜❤️‍🔥偏移式煙燻爐 Offset Smoker",
+                ig: "https://www.instagram.com/956leissmoker/", fb: "https://www.facebook.com/profile.php?id=100090128882932&locale=zh_TW",
                 canCustomize: false,
                 menu: [
                     { name: "牛頰肉 Beef Cheek", price: 350 },
@@ -111,8 +111,8 @@
             {
                 id: "to-the-pizza",
                 name: "TO THE PIZZA 來去披薩",
-                desc: "現場手工現擀餅皮、搭配精選義式風味配料。高溫現烤外酥內軟，咬下的每一口都是滿滿的幸福滋味！",
-                ig: "https://instagram.com/", fb: "https://facebook.com/",
+                desc: "Neapolitan Pizza on Wheels • Taitung",
+                ig: "https://www.instagram.com/tothepizza/", fb: "https://www.facebook.com/tothepizza?locale=zh_TW",
                 canCustomize: true,
                 customOptions: [
                     { name: "洋蔥", price: 20 },
@@ -143,7 +143,7 @@
             ctx.fillStyle = selectedBrand?.id === 'yu-tian' ? '#FFFFFF' : '#374151';
             ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('雨田燻', 90, 85);
 
-            // 右圓：PIZZA
+            // 右圓：TO THE PIZZA
             ctx.beginPath(); ctx.arc(270, 80, 55, 0, Math.PI * 2);
             ctx.fillStyle = selectedBrand?.id === 'to-the-pizza' ? '#111827' : '#E5E7EB'; ctx.fill();
             ctx.fillStyle = selectedBrand?.id === 'to-the-pizza' ? '#FFFFFF' : '#374151';
