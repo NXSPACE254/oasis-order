@@ -19,8 +19,31 @@
     </div>
 
     <div id="entrance-stage" class="block">
+        
+        <div class="mb-5 bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+            <button onclick="toggleAnnouncement()" class="w-full flex justify-between items-center px-4 py-3 bg-stone-50 hover:bg-stone-100 transition text-left">
+                <span class="text-xs font-bold text-stone-700 tracking-wide flex items-center">
+                    📅 本月品牌出攤與最新活動資訊
+                </span>
+                <span id="announce-arrow" class="text-xs text-stone-400 transition-transform duration-200">▼</span>
+            </button>
+            <div id="announce-content" class="hidden p-4 border-t border-gray-100 text-xs text-stone-600 space-y-3 leading-relaxed bg-white">
+                <div>
+                    <p class="font-bold text-emerald-700 mb-1">🎪 綠洲場快閃出攤時刻表</p>
+                    <ul class="list-disc pl-4 space-y-0.5 text-stone-500">
+                        <li><strong>雨田燻：</strong> 6/19 (五) - 6/20 (六) 17:30 - 19:30</li>
+                        <li><strong>TO THE PIZZA：</strong> 6/19 (五) - 6/20 (六) 17:30 - 19:30</li>
+                    </ul>
+                </div>
+                <div class="pt-2 border-t border-dashed border-gray-100">
+                    <p class="font-bold text-amber-700 mb-1">✨ 鐵花館/綠洲場後續預告</p>
+                    <p class="text-stone-500">更多跨界美學策展、在地風味餐車合作即將陸續登場，敬請期待！</p>
+                </div>
+            </div>
+        </div>
+
         <p class="text-sm text-gray-600 mb-2 text-center">請點擊下方品牌圖示查看介紹：</p>
-        <canvas id="brandCanvas" width="360" height="180" class="mx-auto touch-none"></canvas>
+        <canvas id="brandCanvas" width="360" height="190" class="mx-auto touch-none"></canvas>
         
         <div id="brand-card" class="hidden mt-4 p-5 bg-white rounded-xl shadow-sm border border-gray-100">
             <h2 id="card-title" class="text-xl font-bold text-gray-800"></h2>
@@ -30,7 +53,7 @@
                 <a id="link-fb" href="#" target="_blank" rel="noopener noreferrer">🔗 粉絲專頁</a>
             </div>
             <button id="go-order-btn" class="w-full bg-black text-white text-sm py-3 rounded-lg font-medium tracking-wide hover:bg-gray-800 transition">
-                進入點餐介面
+                開始點餐
             </button>
         </div>
 
@@ -48,7 +71,20 @@
             <p class="text-[10px] text-stone-500 mt-3 text-center border-t border-stone-800 pt-2">⚠️ 現場付款時請主動出示問卷完成畫面折抵 10 元</p>
         </div>
 
-        <div class="mt-6 p-4 bg-gray-100 rounded-xl border border-gray-200 text-[11px] text-gray-500 leading-relaxed space-y-1.5">
+        <div class="mt-6 p-4 bg-white rounded-xl border border-stone-200 shadow-sm text-center">
+            <p class="text-xs font-bold text-stone-800 mb-2 tracking-wide">🤝 歡迎品牌加入！餐車進駐與場地租借合作</p>
+            <p class="text-[11px] text-stone-500 mb-3 leading-relaxed">不論您是風格餐車想加入快閃、或是尋求高質感策展空間，歡迎點擊下方與我們聯繫：</p>
+            <div class="flex justify-center space-x-3 text-xs">
+                <a href="https://lin.ee/VAwAg1I" target="_blank" rel="noopener noreferrer" class="px-4 py-1.5 bg-[#06C755] text-white rounded-full font-medium shadow-sm hover:opacity-90 transition flex items-center">
+                    💬 LINE 官方客服
+                </a>
+                <a href="https://www.facebook.com/nxspace254" target="_blank" rel="noopener noreferrer" class="px-4 py-1.5 bg-[#1877F2] text-white rounded-full font-medium shadow-sm hover:opacity-90 transition flex items-center">
+                    🔵 臉書粉絲專頁
+                </a>
+            </div>
+        </div>
+
+        <div class="mt-4 p-4 bg-gray-100 rounded-xl border border-gray-200 text-[11px] text-gray-500 leading-relaxed space-y-1.5">
             <p>1. 本系統僅供 NX SPACE 綠洲場快閃策展活動預備點餐使用，系統所蒐集之顧客個人資料與消費紀錄僅得作為現場備餐及消費者聯繫相關用途。使用者於進行點餐時，即視為已詳閱、瞭解並完全同意本空間之各項場地使用規定與隱私保護聲明。</p>
             <p>2. 本服務系統之架構、頁面設計及相關品牌資產，均歸屬 NX SPACE 馜享空間及卡馜咖啡館所有，本公司保留本預點服務、活動內容調整與最終解釋之所有權利。</p>
         </div>
@@ -102,7 +138,7 @@
 
             <div>
                 <label class="block text-gray-700 font-medium mb-1">備註說明 (選填)</label>
-                <input type="text" id="order_note" placeholder="例如：披薩不要辣粉" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black">
+                <input type="text" id="order_note" placeholder="例如：飯少/不加辣" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black">
             </div>
             
             <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-medium hover:bg-emerald-700 transition mt-6">
@@ -174,8 +210,8 @@
 
         function drawCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawBrandButton(brands[0], 90, 90);
-            drawBrandButton(brands[1], 270, 90);
+            drawBrandButton(brands[0], 90, 70);
+            drawBrandButton(brands[1], 270, 70);
         }
 
         function drawBrandButton(brand, cx, cy) {
@@ -195,7 +231,7 @@
             const img = brandImages[brand.id];
             if (img && img.complete && img.naturalWidth !== 0) {
                 ctx.drawImage(img, cx - radius, cy - radius, radius * 2, radius * 2);
-                ctx.fillStyle = isSelected ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.2)';
+                ctx.fillStyle = isSelected ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0.05)';
                 ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
             } else {
                 ctx.fillStyle = isSelected ? '#111827' : '#E5E7EB';
@@ -203,19 +239,34 @@
             }
             ctx.restore();
 
-            const hasImg = (img && img.complete && img.naturalWidth !== 0);
-            ctx.fillStyle = hasImg ? '#FFFFFF' : (isSelected ? '#FFFFFF' : '#374151');
-            ctx.font = 'bold 15px sans-serif';
+            ctx.fillStyle = isSelected ? '#111827' : '#374151';
+            ctx.font = isSelected ? 'bold 15px sans-serif' : 'medium 14px sans-serif';
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
+            ctx.textBaseline = 'top';
+            
+            const textY = cy + radius + 12;
             
             if (brand.name.includes(" ")) {
                 let parts = brand.name.split(" ");
-                ctx.fillText(parts[0], cx, cy - 10);
-                ctx.font = 'bold 11px sans-serif';
-                ctx.fillText(brand.name.replace(parts[0]+" ", ""), cx, cy + 12);
+                ctx.fillText(parts[0], cx, textY);
+                ctx.font = isSelected ? 'bold 11px sans-serif' : 'normal 11px sans-serif';
+                ctx.fillStyle = isSelected ? '#4B5563' : '#6B7280';
+                ctx.fillText(brand.name.replace(parts[0]+" ", ""), cx, textY + 18);
             } else {
-                ctx.fillText(brand.name, cx, cy);
+                ctx.fillText(brand.name, cx, textY);
+            }
+        }
+
+        // 🌟 新增：活動公告折疊切換函式
+        function toggleAnnouncement() {
+            const content = document.getElementById('announce-content');
+            const arrow = document.getElementById('announce-arrow');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                arrow.style.transform = 'rotate(0deg)';
             }
         }
 
@@ -223,8 +274,8 @@
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left; 
             const y = event.clientY - rect.top;
-            if (Math.sqrt((x-90)**2 + (y-90)**2) < 55) { showBrandCard(brands[0]); } 
-            else if (Math.sqrt((x-270)**2 + (y-90)**2) < 55) { showBrandCard(brands[1]); }
+            if (Math.sqrt((x-90)**2 + (y-70)**2) < 55) { showBrandCard(brands[0]); } 
+            else if (Math.sqrt((x-270)**2 + (y-70)**2) < 55) { showBrandCard(brands[1]); }
         });
 
         function showBrandCard(brand) {
@@ -241,7 +292,7 @@
         document.getElementById('go-order-btn').addEventListener('click', function() {
             document.getElementById('entrance-stage').classList.add('hidden');
             document.getElementById('order-stage').classList.remove('hidden');
-            document.getElementById('order-target').innerText = "預訂目標商店：" + selectedBrand.name;
+            document.getElementById('order-target').innerText = "訂購廠商：" + selectedBrand.name;
             
             const menuContainer = document.getElementById('menu_list_container');
             menuContainer.innerHTML = "";
@@ -403,10 +454,7 @@
             })
             .then(() => {
                 localStorage.setItem('nx_space_last_order', JSON.stringify(orderData));
-                
-                // 🌟 關鍵優化：修正跳出提示框內文，加入訂單成立聲明與修改規範
                 alert(`🎉 預訂成功！\n\n您的取餐時間：${orderData.date} ${orderData.time}\n餐點已同步至 ${orderData.brand} 後台。\n\n應付總金額：$${orderData.total} 元\n\n⚠️ 重要提醒：\n1. 訂單送出後即正式成立，如需修改或取消訂單，請自行主動聯繫廠商。若未取餐，仍須承擔相關備餐損失。\n2. 現場付款時主動出示問卷填寫完成畫面，可享現場現折 10 元優惠！`);
-                
                 document.getElementById('menuForm').reset();
                 backToEntrance();
                 checkOrderHistory(); 
