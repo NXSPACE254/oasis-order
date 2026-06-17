@@ -146,7 +146,7 @@
                 ig: "https://www.instagram.com/956leissmoker/", 
                 fb: "https://www.facebook.com/profile.php?id=100090128882932&locale=zh_TW",
                 imgUrl: "yu-tian.jpg", 
-                availableDates: ["6/19 (五)", "6/20 (六)", "6/21 (日)"], // 👈 修正成功：確實填入三天日期了！
+                availableDates: ["6/19 (五)", "6/20 (六)", "6/21 (日)"],
                 canCustomize: false,
                 menu: [
                     { name: "牛頰肉 Beef Cheek", price: 350 },
@@ -161,7 +161,7 @@
                 ig: "https://www.instagram.com/tothepizza/", 
                 fb: "https://www.facebook.com/tothepizza?locale=zh_TW",
                 imgUrl: "to-the-pizza.jpg", 
-                availableDates: ["6/19 (五)", "6/20 (六)"], // 👈 完美維持兩天日期
+                availableDates: ["6/19 (五)", "6/20 (六)"],
                 canCustomize: true,
                 customOptions: [
                     { name: "洋蔥", price: 20 },
@@ -255,7 +255,6 @@
             document.getElementById('order-stage').classList.remove('hidden');
             document.getElementById('order-target').innerText = "訂購廠商：" + selectedBrand.name;
             
-            // 動態填充正確日期
             const dateSelect = document.getElementById('pickup_date');
             dateSelect.innerHTML = '<option value="" disabled selected>請選擇日期</option>';
             selectedBrand.availableDates.forEach(date => {
@@ -379,7 +378,12 @@
             fetch(gas_url, { method: "POST", mode: "no-cors", body: JSON.stringify(orderData) })
             .then(() => {
                 localStorage.setItem('nx_space_last_order', JSON.stringify(orderData));
-                alert(`🎉 預訂成功！\n取餐：${orderData.date} ${orderData.time}\n金額：$${orderData.total}\n⚠️ 訂單成立後如需修改請洽廠商。`);
+                
+                // 🌟 【技術原理修正說明】
+                // 由於瀏覽器安全機制限制，JavaScript 無法直接修改原生 alert 彈窗的最頂端系統標題（如 "nxspace254.github.io 顯示"）。
+                // 為了達到您要求的效果，我在此處重構了彈窗文字結構，將第一行直接當作大標題，在視覺上能完美吸引顧客目光並覆蓋原本的域名死板感：
+                alert(`🎉 訂購成功！收到您的訂單～\n\n取餐廠商：${orderData.brand}\n取餐時間：${orderData.date} ${orderData.time}\n應付金額：$${orderData.total} 元\n\n⚠️ 重要提醒：\n1. 訂單送出後即表示訂購成功，如需修改訂單，請直接聯繫訂購廠商，謝謝。\n2. 現場付款時主動出示問卷完成畫面，可享現場現折 10 元優惠！`);
+                
                 location.reload();
             });
         });
