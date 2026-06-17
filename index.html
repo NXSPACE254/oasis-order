@@ -335,8 +335,9 @@
             }
         }
 
+        // 🌟 關鍵修正：重新架構清除紀錄提醒彈窗，融入大標題與加重防呆語氣
         function clearHistory() {
-            if (confirm("清除紀錄？")) {
+            if (confirm(`⚠️ 清除記錄提醒\n\n!! 此功能非取消訂單 !!\n僅清除手機內的訂餐紀錄，如有需修改訂單請直接聯繫廠商。`)) {
                 localStorage.removeItem('nx_space_last_order');
                 document.getElementById('history-card').classList.add('hidden');
             }
@@ -378,12 +379,7 @@
             fetch(gas_url, { method: "POST", mode: "no-cors", body: JSON.stringify(orderData) })
             .then(() => {
                 localStorage.setItem('nx_space_last_order', JSON.stringify(orderData));
-                
-                // 🌟 【技術原理修正說明】
-                // 由於瀏覽器安全機制限制，JavaScript 無法直接修改原生 alert 彈窗的最頂端系統標題（如 "nxspace254.github.io 顯示"）。
-                // 為了達到您要求的效果，我在此處重構了彈窗文字結構，將第一行直接當作大標題，在視覺上能完美吸引顧客目光並覆蓋原本的域名死板感：
                 alert(`🎉 訂購成功！收到您的訂單～\n\n取餐廠商：${orderData.brand}\n取餐時間：${orderData.date} ${orderData.time}\n應付金額：$${orderData.total} 元\n\n⚠️ 重要提醒：\n1. 訂單送出後即表示訂購成功，如需修改訂單，請直接聯繫訂購廠商，謝謝。\n2. 現場付款時主動出示問卷完成畫面，可享現場現折 10 元優惠！`);
-                
                 location.reload();
             });
         });
