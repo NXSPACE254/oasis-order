@@ -45,8 +45,9 @@
                 </div>
                 <div class="pt-2 border-t border-dashed border-gray-100">
                     <p class="font-bold text-amber-700 mb-1">✨ 鐵花館/綠洲場新活動預告</p>
+                    <ul class="list-disc pl-4 text-stone-500">
                         <li><strong>米麻岸-毛球裝飾畫手作坊：</strong> 6/20(六) 14:00 - 16:00</li>
-
+                    </ul>
                 </div>
             </div>
         </div>
@@ -74,6 +75,7 @@
             <div class="text-xs space-y-2 text-stone-300">
                 <p><strong>預訂商店：</strong> <span id="hist-brand"></span></p>
                 <p><strong>取餐時間：</strong> <span id="hist-time"></span></p>
+                <p><strong>用餐方式：</strong> <span id="hist-dining" class="text-amber-400 font-medium"></span></p>
                 <p><strong>餐點內容：</strong> <span id="hist-content" class="block bg-stone-900 p-2 rounded mt-1 text-stone-200 break-all"></span></p>
                 <p class="text-right text-stone-400 font-medium">應付總額：<span id="hist-total" class="text-sm font-bold text-emerald-400"></span> 元</p>
             </div>
@@ -89,7 +91,7 @@
 
         <div class="mt-4 p-4 bg-gray-100 rounded-xl border border-gray-200 text-[10px] text-gray-500 leading-relaxed space-y-1">
             <p>1. 本系統僅供 NX SPACE 綠洲場快閃策展活動預備點餐使用，系統所蒐集之顧客個人資料與消費紀錄僅得作為現場備餐及消費者聯繫相關用途。使用者於進行點餐時，即視為已詳閱、瞭解並完全同意本空間之各項場地使用規定與隱私保護聲明。</p>
-            <p>2. 本服務系統之架構、頁面設計及相關品牌資產，均歸屬 NX SPACE 馜享空間及卡馜咖啡館所有，本公司保留本預點服務、活動內容調整與最終解釋之所有權利。</p>
+            <p>2. 本服務系統之架構、頁面設計及相關品牌資產，均歸屬 NX SPACE 馜享空間及卡馜咖啡館所有，本公司保留本預點服務、活動內容調整與延期解釋之所有權利。</p>
         </div>
     </div>
 
@@ -105,22 +107,22 @@
         <form id="menuForm" class="space-y-4 text-sm">
             <div>
                 <label class="block text-gray-700 font-medium mb-1">取餐人姓名</label>
-                <input type="text" id="cust_name" required class="w-full border border-gray-200 p-2.5 rounded-lg">
+                <input type="text" id="cust_name" required class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black">
             </div>
             <div>
                 <label class="block text-gray-700 font-medium mb-1">聯絡電話</label>
-                <input type="tel" id="cust_phone" required class="w-full border border-gray-200 p-2.5 rounded-lg">
+                <input type="tel" id="cust_phone" required class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black">
             </div>
             
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-gray-700 font-medium mb-1">取餐日期</label>
-                    <select id="pickup_date" required class="w-full border border-gray-200 p-2.5 rounded-lg bg-white">
-                        </select>
+                    <select id="pickup_date" required class="w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black">
+                    </select>
                 </div>
                 <div>
                     <label class="block text-gray-700 font-medium mb-1">取餐時間</label>
-                    <select id="pickup_time" required class="w-full border border-gray-200 p-2.5 rounded-lg bg-white">
+                    <select id="pickup_time" required class="w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black">
                         <option value="" disabled selected>請選擇時間</option>
                         <option value="17:30">17:30</option>
                         <option value="18:00">18:00</option>
@@ -131,6 +133,8 @@
                 </div>
             </div>
 
+            <div id="dining-option-container" class="space-y-1"></div>
+
             <div class="border-t border-b border-gray-100 py-4 my-4">
                 <p class="font-bold text-gray-800 mb-3 text-base">🍽️ 線上菜單（可多選）</p>
                 <div id="menu_list_container" class="space-y-1"></div>
@@ -138,15 +142,14 @@
 
             <div>
                 <label class="block text-gray-700 font-medium mb-1">備註說明 (選填)</label>
-                <input type="text" id="order_note" placeholder="例如：飯少｜不加辣" class="w-full border border-gray-200 p-2.5 rounded-lg">
+                <input type="text" id="order_note" placeholder="例如：飯少｜不加辣" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black">
             </div>
             
-            <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6">送出預訂單</button>
+            <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6 hover:bg-emerald-700 transition">送出預訂單</button>
         </form>
     </div>
 
     <script>
-        // 廠商與菜單資料庫
         const brands = [
             {
                 id: "yu-tian",
@@ -156,6 +159,7 @@
                 fb: "https://www.facebook.com/profile.php?id=100090128882932&locale=zh_TW",
                 imgUrl: "yu-tian.jpg", 
                 availableDates: ["6/19 (五)", "6/20 (六)", "6/21 (日)"],
+                hasDiningOption: false,
                 canCustomize: false,
                 menu: [
                     { name: "牛頰肉 Beef Cheek", price: 350 },
@@ -171,6 +175,7 @@
                 fb: "https://www.facebook.com/tothepizza?locale=zh_TW",
                 imgUrl: "to-the-pizza.jpg", 
                 availableDates: ["6/19 (五)", "6/20 (六)"],
+                hasDiningOption: true,
                 canCustomize: true,
                 customOptions: [
                     { name: "洋蔥", price: 20 },
@@ -244,7 +249,7 @@
         canvas.addEventListener('click', function(event) {
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left; 
-            const y = event.clientY - rect.top;
+            const y = event.clientY - top;
             if (Math.sqrt((x-90)**2 + (y-70)**2) < 55) showBrandCard(brands[0]);
             else if (Math.sqrt((x-270)**2 + (y-70)**2) < 55) showBrandCard(brands[1]);
         });
@@ -259,6 +264,7 @@
             document.getElementById('link-fb').href = brand.fb;
         }
 
+        // 進入預點單填寫階段
         document.getElementById('go-order-btn').addEventListener('click', function() {
             document.getElementById('entrance-stage').classList.add('hidden');
             document.getElementById('order-stage').classList.remove('hidden');
@@ -273,6 +279,25 @@
                 dateSelect.appendChild(opt);
             });
 
+            // 完美注入用餐方式選鈕
+            const diningContainer = document.getElementById('dining-option-container');
+            diningContainer.innerHTML = "";
+            if (selectedBrand.hasDiningOption) {
+                diningContainer.innerHTML = `
+                    <label class="block text-gray-700 font-medium mb-1 mt-2">用餐方式</label>
+                    <div class="flex space-x-6 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="dining_style" value="外帶" checked class="w-4 h-4 text-black focus:ring-black border-gray-300">
+                            <span class="text-gray-800 font-medium">🛍️ 外帶</span>
+                        </label>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="dining_style" value="內用" class="w-4 h-4 text-black focus:ring-black border-gray-300">
+                            <span class="text-gray-800 font-medium">🍽️ 內用</span>
+                        </label>
+                    </div>
+                `;
+            }
+
             const menuContainer = document.getElementById('menu_list_container');
             menuContainer.innerHTML = "";
             selectedBrand.menu.forEach((item, index) => {
@@ -284,7 +309,7 @@
                             <span class="font-medium text-gray-800">${item.name}</span>
                             <span class="text-xs text-emerald-600 block">$${item.price} 元</span>
                         </div>
-                        <select name="qty_${index}" onchange="togglePizzaOptions(${index}, this.value)" class="border border-gray-300 rounded p-1 text-xs">
+                        <select name="qty_${index}" onchange="togglePizzaOptions(${index}, this.value)" class="border border-gray-300 rounded p-1 text-xs focus:border-black bg-white">
                             <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
                         </select>
                     </div>
@@ -292,12 +317,12 @@
                 if (selectedBrand.canCustomize) {
                     let optDiv = document.createElement('div');
                     optDiv.id = `pizza_opt_box_${index}`;
-                    optDiv.className = "hidden mt-3 p-2.5 bg-gray-50 rounded-lg text-xs space-y-2 border border-gray-100";
+                    optDiv.className = "hidden mt-3 p-2.5 bg-gray-50 rounded-lg text-xs space-y-2 border border-gray-100 text-gray-500";
                     optDiv.innerHTML = `<p class="font-semibold text-gray-700">↳ 客製化加料：</p>`;
                     selectedBrand.customOptions.forEach((opt, optIdx) => {
                         optDiv.innerHTML += `
                             <label class="flex items-center space-x-2 mt-1 cursor-pointer">
-                                <input type="checkbox" name="opt_${index}_${optIdx}" value="${opt.name}" data-price="${opt.price}" class="rounded text-black">
+                                <input type="checkbox" name="opt_${index}_${optIdx}" value="${opt.name}" data-price="${opt.price}" class="rounded text-black focus:ring-black">
                                 <span>+ ${opt.name} (+$${opt.price})</span>
                             </label>
                         `;
@@ -339,12 +364,12 @@
                 historyCard.classList.remove('hidden');
                 document.getElementById('hist-brand').innerText = order.brand;
                 document.getElementById('hist-time').innerText = `${order.date} ${order.time}`;
+                document.getElementById('hist-dining').innerText = order.dining_option || "外帶";
                 document.getElementById('hist-content').innerText = order.order_content;
                 document.getElementById('hist-total').innerText = order.total;
             }
         }
 
-        // 🌟 核心工程：自製美學 Modal 驅動引擎
         function openCustomModal(title, bodyHtml, actionButtonsHtml) {
             document.getElementById('modal-title').innerText = title;
             document.getElementById('modal-body').innerHTML = bodyHtml;
@@ -356,13 +381,12 @@
             document.getElementById('custom-modal').classList.add('hidden');
         }
 
-        // 🌟 100% 掌握設計的「清除紀錄提醒彈窗」：上方只有您要的「提醒！」二字
         function triggerClearHistoryAlert() {
             const bodyContent = `
                 <p class="font-extrabold text-red-600 text-sm tracking-wide bg-red-50 p-2 rounded-lg border border-red-100 text-center">
-                    ⚠️ 此功能非取消訂單
+                    此功能非取消訂單
                 </p>
-                <p class="text-gray-500 text-stone-600 mt-2">
+                <p class="text-stone-600 mt-2 text-center">
                     僅清除手機內的訂餐紀錄，如有需修改訂單請直接聯繫廠商。
                 </p>
             `;
@@ -370,7 +394,7 @@
                 <button onclick="closeCustomModal()" class="px-4 py-2 text-stone-400 hover:text-stone-600 font-medium transition">取消</button>
                 <button onclick="executeClearHistory()" class="px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition">確定清除</button>
             `;
-            openCustomModal("清除記錄提醒", bodyContent, actionButtons);
+            openCustomModal("提醒！", bodyContent, actionButtons);
         }
 
         function executeClearHistory() {
@@ -379,7 +403,6 @@
             closeCustomModal();
         }
 
-        // 表單提交與訂購成功自製美學彈窗
         document.getElementById('menuForm').addEventListener('submit', function(e) {
             e.preventDefault();
             let finalItems = [];
@@ -401,10 +424,15 @@
                     total += sum;
                 }
             });
-            
-            if (finalItems.length === 0) {
+            if (finalItems.length === 0) { 
                 openCustomModal("提示", "<p class='text-center py-2 text-red-500 font-medium'>❌ 未選擇餐點！</p>", `<button onclick="closeCustomModal()" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs">返回選餐</button>`);
-                return;
+                return; 
+            }
+
+            let diningStyle = "外帶";
+            const diningRadio = document.querySelector('input[name="dining_style"]:checked');
+            if (diningRadio) {
+                diningStyle = diningRadio.value;
             }
 
             const orderData = {
@@ -415,6 +443,7 @@
                 time: document.getElementById('pickup_time').value,
                 order_content: finalItems.join(' ｜ '),
                 total: total,
+                dining_option: diningStyle, 
                 note: document.getElementById('order_note').value || "無"
             };
 
@@ -423,11 +452,11 @@
             .then(() => {
                 localStorage.setItem('nx_space_last_order', JSON.stringify(orderData));
                 
-                // 🌟 【訂購成功自製彈窗】：完美擦除網址，帶入最溫馨的客製標題與防呆字句
                 const successBody = `
                     <div class="space-y-2 mt-1">
                         <p class="text-stone-500"><strong class="text-stone-800">取餐廠商：</strong>${orderData.brand}</p>
                         <p class="text-stone-500"><strong class="text-stone-800">取餐時間：</strong>${orderData.date} ${orderData.time}</p>
+                        <p class="text-stone-500"><strong class="text-stone-800">用餐方式：</strong><span class="text-amber-600 font-bold">${orderData.dining_option}</span></p>
                         <p class="text-stone-500"><strong class="text-stone-800">應付金額：</strong><span class="text-emerald-600 font-bold">$${orderData.total} 元</span></p>
                         <div class="mt-4 pt-3 border-t border-dashed border-stone-200 text-[11px] text-stone-500 space-y-1.5 leading-relaxed">
                             <p class="text-amber-700 font-medium">⚠️ 重要提醒：</p>
