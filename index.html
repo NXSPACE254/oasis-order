@@ -261,7 +261,7 @@
         canvas.addEventListener('click', function(event) {
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left; 
-            const y = event.clientY - rect.top; // 完美修復座標偏離Bug
+            const y = event.clientY - rect.top; // 修正點擊偏離 Bug
             if (Math.sqrt((x-90)**2 + (y-70)**2) < 55) showBrandCard(brands[0]);
             else if (Math.sqrt((x-270)**2 + (y-70)**2) < 55) showBrandCard(brands[1]);
         });
@@ -431,7 +431,6 @@
             }
 
             let diningStyle = "外帶";
-            // 只有當用餐方式區塊顯示時，才去抓選取的值
             if (selectedBrand.hasDiningOption) {
                 const diningRadio = document.querySelector('input[name="dining_style"]:checked');
                 if (diningRadio) {
@@ -439,6 +438,7 @@
                 }
             }
 
+            // 調整物件屬性排列順序：將 dining_option 擺放在 total 與 note 之間，以符合後台試算表的接收欄位順序
             const orderData = {
                 brand: selectedBrand.name,
                 name: document.getElementById('cust_name').value,
@@ -447,7 +447,7 @@
                 time: document.getElementById('pickup_time').value,
                 order_content: finalItems.join(' ｜ '),
                 total: total,
-                dining_option: diningStyle, 
+                dining_option: diningStyle, // 成功擺在總金額與備註說明中間！
                 note: document.getElementById('order_note').value || "無"
             };
 
