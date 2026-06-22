@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NX SPACE 點餐系統 4.5</title>
+    <title>NX SPACE 點餐系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #f8f9fa; font-family: sans-serif; }
@@ -180,11 +180,13 @@
         const canvas = document.getElementById('brandCanvas');
         const ctx = canvas.getContext('2d');
 
+        // 🌟 4.6 終極重構：滴水不漏的 App 內建瀏覽器偵測特徵碼（防範 Threads 偽裝假冒）
         function detectInAppBrowser() {
-            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            const ua = navigator.userAgent.toLowerCase();
             const currentUrl = window.location.href;
 
-            if (ua.indexOf("LINE") > -1) {
+            // 1. 如果是 LINE，保持黑魔法自動甩出外置開啟
+            if (ua.indexOf("line") > -1) {
                 if (currentUrl.indexOf("openExternalBrowser=1") === -1) {
                     const separator = currentUrl.indexOf("?") === -1 ? "?" : "&";
                     window.location.href = currentUrl + separator + "openExternalBrowser=1";
@@ -192,16 +194,21 @@
                 }
             }
 
-            const isInApp = (
-                ua.indexOf("Twitter") > -1 || 
-                ua.indexOf("FBAN") > -1 || 
-                ua.indexOf("FBAV") > -1 || 
-                ua.toLowerCase().indexOf("threads") > -1 || 
-                ua.indexOf("LINE") > -1 ||
-                (ua.indexOf("Mobile/") > -1 && ua.indexOf("Safari/") === -1)
+            // 2. 正面交叉判定法：攔截所有包含社群關鍵字或非原生環境特徵
+            const isMobile = /iphone|ipad|ipod|android/i.test(ua);
+            const isInAppPrison = (
+                ua.indexOf("threads") > -1 || 
+                ua.indexOf("instagram") > -1 || 
+                ua.indexOf("fb") > -1 || 
+                ua.indexOf("twitter") > -1 ||
+                ua.indexOf("fban") > -1 ||
+                ua.indexOf("fbav") > -1 ||
+                (isMobile && ua.indexOf("safari") > -1 && ua.indexOf("version") === -1) || // 假冒的 iOS 內建
+                (isMobile && ua.indexOf("chrome") === -1 && ua.indexOf("safari") === -1)   // 其他隱藏環境
             );
 
-            if (isInApp) {
+            // 3. 只要判定不安全，強制拔掉橫幅的 hidden，全面向客人預警
+            if (isInAppPrison) {
                 const banner = document.getElementById('browser-warning-banner');
                 if (banner) banner.classList.remove('hidden');
             }
@@ -287,7 +294,6 @@
             else if (dbData.brands[1] && Math.sqrt((x-270)**2 + (y-70)**2) < 55) showBrandCard(dbData.brands[1]);
         });
 
-        // 點擊廠商圖示顯示介紹卡片
         function showBrandCard(brand) {
             selectedBrand = brand; drawCanvas();
             document.getElementById('brand-card').classList.remove('hidden');
@@ -312,7 +318,6 @@
             closeCustomModal();
         }
 
-        // 點擊進入點餐
         document.getElementById('go-order-btn').addEventListener('click', function() {
             if (!selectedBrand) return;
             
@@ -385,7 +390,7 @@
                 noteBox.classList.remove('hidden');
                 browseBanner.classList.add('hidden');
 
-                // 🌟 核心需求修正：讀取 Excel 的 hasDining 欄位決定是否顯示內用/外帶
+                // 🌟 讀取 Excel 總表欄位 hasDining：動態展示內用與外帶的選項
                 const diningBox = document.getElementById('dining-option-box');
                 let hasDiningVal = String(selectedBrand.hasDining).toUpperCase();
                 if (hasDiningVal === 'TRUE' || selectedBrand.hasDining === true) {
@@ -442,7 +447,6 @@
             });
         });
 
-        // 二次彈出確認方塊
         document.getElementById('menuForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -480,7 +484,7 @@
                 return;
             }
 
-            // 抓取當前填寫的用餐方式
+            // 確保提取當下最準確的用餐樣式值並渲染進彈窗
             let finalDiningStyle = "外帶";
             let hasDiningVal = String(selectedBrand.hasDining).toUpperCase();
             if (hasDiningVal === 'TRUE' || selectedBrand.hasDining === true) {
