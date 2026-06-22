@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NX SPACE 點餐系統</title>
+    <title>NX SPACE 活動平台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #f8f9fa; font-family: sans-serif; }
@@ -161,7 +161,7 @@
 
                 <div id="note-field-box">
                     <label class="block text-gray-700 font-medium mb-1">備註說明 (選填)</label>
-                    <input type="text" id="order_note" placeholder="例如：不加辣｜不要洋蔥" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black">
+                    <input type="text" id="order_note" placeholder="example：不加辣｜不要洋蔥" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black">
                 </div>
                 
                 <button type="submit" id="submit-order-btn" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6 hover:bg-emerald-700 transition">確認送出預訂單</button>
@@ -180,34 +180,33 @@
         const canvas = document.getElementById('brandCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 🌟 4.6 終極重構：滴水不漏的 App 內建瀏覽器偵測特徵碼（防範 Threads 偽裝假冒）
         function detectInAppBrowser() {
-            const ua = navigator.userAgent.toLowerCase();
+            const ua = navigator.userAgent;
             const currentUrl = window.location.href;
 
-            // 1. 如果是 LINE，保持黑魔法自動甩出外置開啟
-            if (ua.indexOf("line") > -1) {
-                if (currentUrl.indexOf("openExternalBrowser=1") === -1) {
-                    const separator = currentUrl.indexOf("?") === -1 ? "?" : "&";
-                    window.location.href = currentUrl + separator + "openExternalBrowser=1";
-                    return;
-                }
+            if (currentUrl.indexOf("openExternalBrowser=1") > -1) {
+                document.getElementById('browser-warning-banner').classList.add('hidden');
+                return;
             }
 
-            // 2. 正面交叉判定法：攔截所有包含社群關鍵字或非原生環境特徵
+            if (/line/i.test(ua)) {
+                const separator = currentUrl.indexOf("?") === -1 ? "?" : "&";
+                window.location.href = currentUrl + separator + "openExternalBrowser=1";
+                return;
+            }
+
             const isMobile = /iphone|ipad|ipod|android/i.test(ua);
             const isInAppPrison = (
-                ua.indexOf("threads") > -1 || 
-                ua.indexOf("instagram") > -1 || 
-                ua.indexOf("fb") > -1 || 
-                ua.indexOf("twitter") > -1 ||
-                ua.indexOf("fban") > -1 ||
-                ua.indexOf("fbav") > -1 ||
-                (isMobile && ua.indexOf("safari") > -1 && ua.indexOf("version") === -1) || // 假冒的 iOS 內建
-                (isMobile && ua.indexOf("chrome") === -1 && ua.indexOf("safari") === -1)   // 其他隱藏環境
+                /threads/i.test(ua) || 
+                /instagram/i.test(ua) || 
+                /fban/i.test(ua) || 
+                /fbav/i.test(ua) || 
+                /fb_iab/i.test(ua) ||
+                /twitter/i.test(ua) ||
+                (isMobile && /safari/i.test(ua) && !/version/i.test(ua)) || 
+                (isMobile && !/chrome/i.test(ua) && !/safari/i.test(ua))
             );
 
-            // 3. 只要判定不安全，強制拔掉橫幅的 hidden，全面向客人預警
             if (isInAppPrison) {
                 const banner = document.getElementById('browser-warning-banner');
                 if (banner) banner.classList.remove('hidden');
@@ -390,7 +389,6 @@
                 noteBox.classList.remove('hidden');
                 browseBanner.classList.add('hidden');
 
-                // 🌟 讀取 Excel 總表欄位 hasDining：動態展示內用與外帶的選項
                 const diningBox = document.getElementById('dining-option-box');
                 let hasDiningVal = String(selectedBrand.hasDining).toUpperCase();
                 if (hasDiningVal === 'TRUE' || selectedBrand.hasDining === true) {
@@ -484,7 +482,6 @@
                 return;
             }
 
-            // 確保提取當下最準確的用餐樣式值並渲染進彈窗
             let finalDiningStyle = "外帶";
             let hasDiningVal = String(selectedBrand.hasDining).toUpperCase();
             if (hasDiningVal === 'TRUE' || selectedBrand.hasDining === true) {
