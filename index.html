@@ -14,13 +14,6 @@
 </head>
 <body class="p-4 max-w-md mx-auto">
 
-    <div id="browser-warning-banner" class="hidden mb-4 bg-amber-500 text-stone-900 text-xs font-bold p-3 rounded-xl shadow-sm border border-amber-600 animate-pulse">
-        <p class="leading-relaxed">
-            ⚠️ 偵測到您目前使用 App 內建瀏覽器（如 Threads, FB, IG），可能導致菜單庫存未即時更新。<br>
-            👉 <button onclick="copyCurrentUrl()" class="underline text-stone-900 font-black bg-white/40 px-1.5 py-0.5 rounded ml-1">點此複製網址</button> 至 Safari 或 Chrome 開啟以獲得最佳點餐體驗！
-        </p>
-    </div>
-
     <div id="custom-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl border border-gray-100 transform transition-all duration-200">
             <h3 id="modal-title" class="text-base font-bold text-gray-900 mb-2 tracking-wide"></h3>
@@ -180,41 +173,7 @@
         const canvas = document.getElementById('brandCanvas');
         const ctx = canvas.getContext('2d');
 
-        function detectInAppBrowser() {
-            const ua = navigator.userAgent;
-            const currentUrl = window.location.href;
-
-            if (currentUrl.indexOf("openExternalBrowser=1") > -1) {
-                document.getElementById('browser-warning-banner').classList.add('hidden');
-                return;
-            }
-
-            if (/line/i.test(ua)) {
-                const separator = currentUrl.indexOf("?") === -1 ? "?" : "&";
-                window.location.href = currentUrl + separator + "openExternalBrowser=1";
-                return;
-            }
-
-            const isMobile = /iphone|ipad|ipod|android/i.test(ua);
-            const isInAppPrison = (
-                /threads/i.test(ua) || 
-                /instagram/i.test(ua) || 
-                /fban/i.test(ua) || 
-                /fbav/i.test(ua) || 
-                /fb_iab/i.test(ua) ||
-                /twitter/i.test(ua) ||
-                (isMobile && /safari/i.test(ua) && !/version/i.test(ua)) || 
-                (isMobile && !/chrome/i.test(ua) && !/safari/i.test(ua))
-            );
-
-            if (isInAppPrison) {
-                const banner = document.getElementById('browser-warning-banner');
-                if (banner) banner.classList.remove('hidden');
-            }
-        }
-
         window.addEventListener('DOMContentLoaded', () => {
-            detectInAppBrowser();
             fetch(GAS_URL).then(res => res.json()).then(data => {
                 dbData = data;
                 switchVenue('oasis'); 
@@ -305,7 +264,6 @@
             if (brand.fbUrl) { fbLink.href = brand.fbUrl; fbLink.className = "text-blue-600 block"; }
             if (brand.igUrl) { igLink.href = brand.igUrl; igLink.className = "text-pink-600 block"; }
 
-            // 🌟 核心防呆：如果廠商狀態被改為「下架」，按鈕變灰且鎖死不讓點進去
             const goOrderBtn = document.getElementById('go-order-btn');
             if (brand.status === "下架") {
                 goOrderBtn.disabled = true;
@@ -419,10 +377,10 @@
                 let itemDiv = document.createElement('div');
                 itemDiv.className = "menu-item flex items-center justify-between py-4";
                 
-                // 🌟 當日供餐上限超額防呆判定
+                // 🌟 動態賸餘份數計算核心
                 let maxStock = parseInt(item.stock) || 0;
                 let alreadySold = parseInt(item.alreadySold) || 0;
-                let isOutofStock = alreadySold >= maxStock; // 當日累計數量已達上限
+                let remainingAvailable = Math.max(0, maxStock - alreadySold); // 扣除目前總表剩餘數
                 
                 let selectSelectorHtml = '';
                 let titleColorStyle = 'text-gray-800';
@@ -430,24 +388,26 @@
 
                 if (isBrowseOnlyMode) {
                     selectSelectorHtml = '';
-                } else if (isOutofStock) {
-                    // 超額時，鎖死選單，並提示紅色文字
+                } else if (remainingAvailable <= 0) {
+                    // 已售罄或達到供餐上限
                     titleColorStyle = 'text-gray-400 line-through';
                     priceLabelHtml = `<span class="text-xs text-red-600 font-bold block">⚠️ 該品項已超過當日供餐上限</span>`;
                     selectSelectorHtml = `<span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">完售</span>`;
                 } else {
-                    // 正常狀態下，動態顯示數量下拉選單
+                    // 🌟 核心修復：根據剩餘數量「動態生成」下拉選單的最大上限
+                    let maxSelectable = Math.min(3, remainingAvailable); // 最多 3 份或剩餘份數
+                    let optionsHtml = '<option value="0">0</option>';
+                    for (let s = 1; s <= maxSelectable; s++) {
+                        optionsHtml += `<option value="${s}">${s}</option>`;
+                    }
+                    
                     selectSelectorHtml = `
                         <select name="qty_${index}" onchange="toggleOptionsBox(${index}, this.value)" class="border border-gray-300 rounded p-1 text-xs bg-white focus:ring-1 focus:ring-black">
-                            <option value="0">0</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
+                            ${optionsHtml}
                         </select>
                     `;
                 }
 
-                // 🌟 imgUrl 渲染：精美的正方形圓角圖片框
                 let itemImgHtml = '';
                 if (item.imgUrl) {
                     let fullImgPath = item.imgUrl.startsWith("http") ? item.imgUrl : imgBase + item.imgUrl;
@@ -471,8 +431,7 @@
                     </div>
                 `;
                 
-                // 客製化選項渲染
-                if (item.options && !isBrowseOnlyMode && !isOutofStock) {
+                if (item.options && !isBrowseOnlyMode && remainingAvailable > 0) {
                     let optDiv = document.createElement('div');
                     optDiv.id = `opt_box_${index}`;
                     optDiv.className = "hidden mt-2 p-2 bg-gray-50 rounded-lg text-xs space-y-1 border border-gray-100 text-gray-500 w-full";
@@ -490,7 +449,6 @@
                         `;
                     });
                     
-                    // 為了排版完美，建立包裝容器將客製化選單塞在餐點下方
                     let wrapper = document.createElement('div');
                     wrapper.className = "border-b border-gray-100/60 pb-3";
                     wrapper.appendChild(itemDiv);
@@ -503,7 +461,6 @@
             });
         });
 
-        // 輔助函式：切換客製化區塊的顯隱
         function toggleOptionsBox(index, value) {
             const box = document.getElementById(`opt_box_${index}`);
             if (!box) return;
@@ -511,7 +468,6 @@
                 box.className = "block mt-2 p-2 bg-gray-50 rounded-lg text-xs space-y-1 border border-gray-100 text-gray-500 w-full";
             } else {
                 box.className = "hidden";
-                // 歸零時順便取消所有勾選
                 box.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             }
         }
