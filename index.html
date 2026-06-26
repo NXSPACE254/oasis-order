@@ -14,6 +14,7 @@
 </head>
 <body class="p-4 max-w-md mx-auto">
 
+    <!-- 萬用自訂彈出視窗 (Modal) -->
     <div id="custom-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl border border-gray-100 transform transition-all duration-200">
             <h3 id="modal-title" class="text-base font-bold text-gray-900 mb-2 tracking-wide"></h3>
@@ -22,11 +23,13 @@
         </div>
     </div>
 
+    <!-- 載入中動畫 -->
     <div id="loading-spinner" class="flex flex-col items-center justify-center py-20 space-y-3">
         <div class="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
         <p class="text-xs text-gray-400 font-medium tracking-wide">．．．資料同步中，請稍後．．．</p>
     </div>
 
+    <!-- 主要網頁內容區 -->
     <div id="main-content" class="hidden">
         <div class="text-center my-6">
             <h1 class="text-2xl font-bold tracking-wider text-gray-800">NX SPACE 馜享空間</h1>
@@ -113,7 +116,7 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-gray-700 font-medium mb-1">取餐日期</label>
-                                <select id="pickup_date" required class="w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black"></select>
+                                <select id="pickup_date" onchange="checkSelectedDateCutoff()" required class="w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black"></select>
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-medium mb-1">取餐時間</label>
@@ -127,7 +130,7 @@
                                 </select>
                             </div>
                         </div>
-                        <p class="text-[11px] text-amber-600 font-medium mt-2 leading-relaxed bg-amber-50 p-2 rounded border border-amber-100">
+                        <p id="cutoff-notice-msg" class="text-[11px] text-amber-600 font-medium mt-2 leading-relaxed bg-amber-50 p-2 rounded border border-amber-100">
                             💡 每日預點最後時間為 13:00 止，如仍有單日點餐需求，歡迎洽詢廠商。
                         </p>
                     </div>
@@ -295,13 +298,16 @@
             document.getElementById('order-stage').classList.remove('hidden');
             document.getElementById('order-target').innerText = "訂購廠商：" + selectedBrand.name;
             
+            // 🎯 動態設定 Excel brands_config 傳進來的最晚下單時間提示
+            let configCutoff = selectedBrand.cutoffTime || "13:00";
+            document.getElementById('cutoff-notice-msg').innerHTML = `💡 每日預點最後時間為 ${configCutoff} 止，如仍有單日點餐需求，歡迎洽詢廠商。`;
+
             const dateSelect = document.getElementById('pickup_date');
             dateSelect.innerHTML = "";
 
             const now = new Date();
             let isBrowseOnlyMode = true; 
             
-            let configCutoff = selectedBrand.cutoffTime || "13:00";
             let cutHour = parseInt(configCutoff.split(":")[0]) || 13;
             let cutMin = parseInt(configCutoff.split(":")[1]) || 0;
 
@@ -332,9 +338,11 @@
                         let deadline = new Date(tDate);
                         deadline.setHours(cutHour, cutMin, 0, 0);
 
-                        if (now.getTime() >= deadline.getTime()) {
-                            opt.disabled = true;
-                            opt.textContent = showText + ` 已超過預點時間`;
+                        // 🔍 這裡原逻辑有漏洞，若只要是當天且過期才標記
+                        let isToday = (now.getFullYear() === tDate.getFullYear() && now.getMonth() === tDate.getMonth() && now.getDate() === tDate.getDate());
+                        if (isToday && now.getTime() >= deadline.getTime()) {
+                            opt.setAttribute('data-expired', 'true');
+                            opt.textContent = showText + ` [超過當日預約時間]`;
                         } else {
                             opt.textContent = showText;
                         }
@@ -368,19 +376,70 @@
                 }
             }
 
+            // 🚀 核心渲染菜單與即時防呆檢查
+            renderMenuList();
+            // 🚀 執行初次日期變更的防呆連動檢查
+            checkSelectedDateCutoff();
+        });
+
+        // 🎯 新增：當切換日期時，即時判斷時間選單是否需要整組反灰
+        function checkSelectedDateCutoff() {
+            const dateSelect = document.getElementById('pickup_date');
+            const timeSelect = document.getElementById('pickup_time');
+            const submitBtn = document.getElementById('submit-order-btn');
+            
+            if (!dateSelect || dateSelect.options.length === 0) return;
+            
+            const selectedOpt = dateSelect.options[dateSelect.selectedIndex];
+            const isExpired = selectedOpt.getAttribute('data-expired') === 'true';
+
+            if (isExpired) {
+                // 1. 強制清空、停用時間下拉選單並加入文字提示
+                timeSelect.innerHTML = `<option value="" disabled selected>[超過當日預約時間]</option>`;
+                timeSelect.disabled = true;
+                timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed focus:outline-none";
+                
+                // 2. 將提交預訂按鈕鎖死反灰
+                submitBtn.disabled = true;
+                submitBtn.innerText = "❌ 超過當日預約時間（不開放預訂）";
+                submitBtn.className = "w-full bg-gray-300 text-gray-500 py-3 rounded-lg font-medium mt-6 cursor-not-allowed";
+            } else {
+                // 恢復正常選單
+                timeSelect.disabled = false;
+                timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black";
+                
+                // 重新載入正確的時間選項
+                let currentVal = timeSelect.value;
+                timeSelect.innerHTML = `
+                    <option value="" disabled ${!currentVal ? 'selected' : ''}>請選擇時間</option>
+                    <option value="17:30" ${currentVal==='17:30'?'selected':''}>17:30</option>
+                    <option value="18:00" ${currentVal==='18:00'?'selected':''}>18:00</option>
+                    <option value="18:30" ${currentVal==='18:30'?'selected':''}>18:30</option>
+                    <option value="19:00" ${currentVal==='19:00'?'selected':''}>19:00</option>
+                    <option value="19:30" ${currentVal==='19:30'?'selected':''}>19:30</option>
+                `;
+
+                submitBtn.disabled = false;
+                submitBtn.innerText = "確認送出預訂單";
+                submitBtn.className = "w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6 hover:bg-emerald-700 transition block";
+            }
+        }
+
+        function renderMenuList() {
             const menuContainer = document.getElementById('menu_list_container');
             menuContainer.innerHTML = "";
             const brandMenu = dbData.menus[selectedBrand.id] || [];
             const imgBase = dbData.main_config.github_img_base || "";
+            const browseBanner = document.getElementById('browse-only-banner');
+            const isBrowseOnlyMode = browseBanner.classList.contains('hidden') ? false : true;
 
             brandMenu.forEach((item, index) => {
                 let itemDiv = document.createElement('div');
                 itemDiv.className = "menu-item flex items-center justify-between py-4";
                 
-                // 🌟 動態賸餘份數計算核心
                 let maxStock = parseInt(item.stock) || 0;
                 let alreadySold = parseInt(item.alreadySold) || 0;
-                let remainingAvailable = Math.max(0, maxStock - alreadySold); // 扣除目前總表剩餘數
+                let remainingAvailable = Math.max(0, maxStock - alreadySold); 
                 
                 let selectSelectorHtml = '';
                 let titleColorStyle = 'text-gray-800';
@@ -389,13 +448,11 @@
                 if (isBrowseOnlyMode) {
                     selectSelectorHtml = '';
                 } else if (remainingAvailable <= 0) {
-                    // 已售罄或達到供餐上限
                     titleColorStyle = 'text-gray-400 line-through';
                     priceLabelHtml = `<span class="text-xs text-red-600 font-bold block">⚠️ 該品項已超過當日供餐上限</span>`;
                     selectSelectorHtml = `<span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">完售</span>`;
                 } else {
-                    // 🌟 核心修復：根據剩餘數量「動態生成」下拉選單的最大上限
-                    let maxSelectable = Math.min(3, remainingAvailable); // 最多 3 份或剩餘份數
+                    let maxSelectable = Math.min(3, remainingAvailable); 
                     let optionsHtml = '<option value="0">0</option>';
                     for (let s = 1; s <= maxSelectable; s++) {
                         optionsHtml += `<option value="${s}">${s}</option>`;
@@ -459,7 +516,7 @@
                 
                 menuContainer.appendChild(itemDiv);
             });
-        });
+        }
 
         function toggleOptionsBox(index, value) {
             const box = document.getElementById(`opt_box_${index}`);
@@ -476,8 +533,9 @@
             e.preventDefault();
             
             const dateSelect = document.getElementById('pickup_date');
-            if (dateSelect.options[dateSelect.selectedIndex].disabled) {
-                alert("您選擇的日期已超過該廠商的最後預點時間，無法送出！");
+            const selectedOpt = dateSelect.options[dateSelect.selectedIndex];
+            if (selectedOpt.getAttribute('data-expired') === 'true') {
+                alert("抱歉，您選擇的日期已經超過該店家的最晚下單時間，無法送出訂單！");
                 return;
             }
 
@@ -604,10 +662,6 @@
                 document.getElementById('hist-content').innerText = order.order_content;
                 document.getElementById('hist-total').innerText = order.total;
             }
-        }
-
-        function copyCurrentUrl() {
-            navigator.clipboard.writeText(window.location.href).then(() => alert("網址複製成功！請至瀏覽器開啟。"));
         }
     </script>
 </body>
