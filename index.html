@@ -170,7 +170,6 @@
         let brandImages = {};
         let currentVenue = "oasis"; 
         
-        // 🌟 新增：用來動態儲存所有廠商座標的陣列
         let brandPositions = [];
 
         const canvas = document.getElementById('brandCanvas');
@@ -210,25 +209,22 @@
             document.getElementById('dynamic-announcement-box').innerText = notice;
         }
 
-        // 🌟 核心動態排版：依據總廠商數量動態計算圓心位置
         function drawCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            brandPositions = []; // 清空舊座標
+            brandPositions = []; 
             
             const count = dbData.brands.length;
             if (count === 0) return;
 
-            const radius = 45; // 稍微調整大小確保容納多廠商
+            const radius = 45; 
             const paddingY = 65; 
 
             dbData.brands.forEach((brand, idx) => {
                 const segmentWidth = canvas.width / count;
                 const cx = (segmentWidth * idx) + (segmentWidth / 2);
                 
-                // 存入座標陣列
                 brandPositions.push({ id: brand.id, cx: cx, cy: paddingY, radius: radius, brandData: brand });
                 
-                // 畫出圓形大頭貼
                 drawDynamicBrandButton(brand, cx, paddingY, radius);
             });
         }
@@ -244,7 +240,7 @@
             if (img && img.complete && img.naturalWidth > 0) {
                 ctx.drawImage(img, cx - radius, cy - radius, radius * 2, radius * 2);
                 ctx.fillStyle = isSelected ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0.05)';
-                ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); fill();
             } else {
                 ctx.fillStyle = isSelected ? '#111827' : '#E5E7EB'; ctx.fill();
             }
@@ -264,7 +260,6 @@
             }
         }
 
-        // 🌟 核心動態點擊偵測：不再寫死座標，而是用迴圈逐一掃描陣列
         canvas.addEventListener('click', function(event) {
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left; 
@@ -338,44 +333,47 @@
             let cutHour = parseInt(configCutoff.split(":")[0]) || 13;
             let cutMin = parseInt(configCutoff.split(":")[1]) || 0;
 
-            if (selectedBrand.rawDates) {
-                let dateStrings = selectedBrand.rawDates.split(",");
+            // 🌟 核心調整：改為動態顯示兩週範圍（從本週一到下週日，共 14 天）並精準防呆
+            let startOfWeek = new Date(now);
+            // 找出本週一
+            let daysToMonday = now.getDay() === 0 ? 6 : now.getDay() - 1;
+            startOfWeek.setDate(now.getDate() - daysToMonday);
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            let todayZero = new Date(now);
+            todayZero.setHours(0, 0, 0, 0);
+
+            for (let i = 0; i < 14; i++) {
+                let tDate = new Date(startOfWeek);
+                tDate.setDate(startOfWeek.getDate() + i);
+
+                isBrowseOnlyMode = false; 
+
+                let opt = document.createElement('option');
+                let showText = `${tDate.getMonth()+1}/${tDate.getDate()} (${['日','一','二','三','四','五','六'][tDate.getDay()]})`;
                 
-                dateStrings.forEach(dStr => {
-                    let tDate = new Date(dStr.trim() + "T00:00:00");
-                    if (isNaN(tDate.getTime())) return;
+                // 將格式存入 value (如：6/28)
+                opt.value = showText;
 
-                    let startOfWeek = new Date(now);
-                    startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-                    startOfWeek.setHours(0,0,0,0);
-                    
-                    let endOfWeek = new Date(startOfWeek);
-                    endOfWeek.setDate(startOfWeek.getDate() + 6);
-                    endOfWeek.setHours(23,59,59,999);
+                let deadline = new Date(tDate);
+                deadline.setHours(cutHour, cutMin, 0, 0);
 
-                    let isCurrentWeek = (tDate >= startOfWeek && tDate <= endOfWeek);
-
-                    let opt = document.createElement('option');
-                    let showText = `${tDate.getMonth()+1}/${tDate.getDate()} (${['日','一','二','三','四','五','六'][tDate.getDay()]})`;
-                    opt.value = showText;
-
-                    if (isCurrentWeek) {
-                        isBrowseOnlyMode = false; 
-                        
-                        let deadline = new Date(tDate);
-                        deadline.setHours(cutHour, cutMin, 0, 0);
-
-                        let isToday = (now.getFullYear() === tDate.getFullYear() && now.getMonth() === tDate.getMonth() && now.getDate() === tDate.getDate());
-                        
-                        if (isToday && now.getTime() >= deadline.getTime()) {
-                            opt.setAttribute('data-expired', 'true');
-                            opt.textContent = showText + ` (超過點餐時間)`;
-                        } else {
-                            opt.textContent = showText;
-                        }
-                        dateSelect.appendChild(opt);
-                    }
-                });
+                // 判斷 1：小於今天的過去日期 $\rightarrow$ 需求2：直接反灰，不加註文字
+                if (tDate < todayZero) {
+                    opt.setAttribute('data-expired', 'true');
+                    opt.textContent = showText;
+                    opt.disabled = true;
+                }
+                // 判斷 2：等於今天的日期 $\rightarrow$ 需求1：超過時間反灰並加註
+                else if (tDate.getTime() === todayZero.getTime() && now.getTime() >= deadline.getTime()) {
+                    opt.setAttribute('data-expired', 'true');
+                    opt.textContent = showText + ` (超過最後點餐時間)`;
+                } 
+                // 判斷 3：其餘皆為可點餐正常日期
+                else {
+                    opt.textContent = showText;
+                }
+                dateSelect.appendChild(opt);
             }
 
             const infoFields = document.getElementById('customer-info-fields');
