@@ -40,7 +40,7 @@
 
         <div id="entrance-stage" class="block">
             <div id="home-line-banner" class="hidden mb-4 bg-red-50 border-red-200 text-red-800 p-2.5 rounded-lg border text-xs font-medium leading-relaxed shadow-sm">
-                ⚠️ <strong>偵測到您正使用 LINE 瀏覽器：</strong>為了確保您的「預訂紀錄」不遺失，建議點擊右上角 <span class="font-extrabold">「···」</span> 並選擇 <span class="underline">「使用 Safari / Chrome 開啟」</span>。
+                ⚠️ <strong>偵測到您正使用非預設的瀏覽器：</strong>為了確保您的「預訂紀錄」不遺失，建議點擊 <span class="font-extrabold">「···」</span> 並選擇 <span class="underline">「使用預設瀏覽器開啟」</span>。
             </div>
 
             <div class="mb-5 bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
@@ -179,9 +179,11 @@
         const ctx = canvas.getContext('2d');
 
         window.addEventListener('DOMContentLoaded', () => {
-            // 🚀 【首頁即時偵測環境】：網頁加載完成後立刻判定，若是 LINE 直接翻開主頁最上方的紅橫幅
+            // 🚀 【多平台萬能偵測】：一次吃下 LINE、Facebook (含 Messenger)、Threads 的內建瀏覽器
             const ua = navigator.userAgent || navigator.vendor || window.opera;
-            if (ua.indexOf("Line") > -1) {
+            const isSocialBrowser = /Line|FBAN|FBAV|Threads/i.test(ua);
+
+            if (isSocialBrowser) {
                 const homeLineBanner = document.getElementById('home-line-banner');
                 if (homeLineBanner) homeLineBanner.classList.remove('hidden');
             }
@@ -364,7 +366,6 @@
 
             const promoBanner = document.getElementById('dynamic-promo-banner');
             
-            // 💡 點餐頁面僅放置問券與促銷廣告，乾淨舒服
             let bannerHtml = `
                 <div class="bg-amber-50 border-amber-200 text-amber-800 p-2.5 rounded-lg border">
                     🎁 <strong>場地問券回饋：</strong>填寫問券並出示即享<strong>折價</strong>優惠！👉 <a href="https://forms.gle/zp2bKyBMKqrpc1fZ9" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline hover:text-blue-800">點此填寫問券</a>
@@ -479,7 +480,6 @@
             checkSelectedDateCutoff();
         });
 
-        // 🚀 【極致防呆】：使用 parseToTimeString 將起訖時間百分百轉換為正確起訖時分
         function checkSelectedDateCutoff() {
             const dateSelect = document.getElementById('pickup_date');
             const timeSelect = document.getElementById('pickup_time');
