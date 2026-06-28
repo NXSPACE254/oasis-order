@@ -87,12 +87,15 @@
 
             <div class="mt-4 p-4 bg-gray-100 rounded-xl border border-gray-200 text-[10px] text-gray-500 leading-relaxed space-y-2">
                 <p>1. 本系統僅供 NX SPACE 綠洲場快閃策展活動預備點餐使用，系統所蒐集之顧客個人資料與消費紀錄僅得作為現場備餐及消費者聯繫相關用途。使用者於進行點餐時，即視為已詳閱、瞭解並完全同意本空間之各項場地使用規定與隱私保護聲明。</p>
-                <p>2. 本服務系統之架構、頁面設計及相關品牌資產，均歸屬 NX SPACE 馜享空間及卡馜咖啡館所有，本公司保留本預點服務、活動內容調整與延期解釋之所有權利。</p>
+                <p>2. 本服務系統之架構、頁面設計及相關品牌資assets，均歸屬 NX SPACE 馜享空間及卡馜咖啡館所有，本公司保留本預點服務、活動內容調整與延期解釋之所有權利。</p>
             </div>
         </div>
 
         <div id="order-stage" class="hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <button onclick="backToEntrance()" class="text-xs text-gray-400 mb-4 flex items-center">← 返回品牌選擇</button>
+            
+            <div id="dynamic-promo-banner" class="hidden mb-4 p-3 rounded-xl border text-xs leading-relaxed space-y-1.5"></div>
+
             <h2 id="order-target" class="text-lg font-bold text-gray-800 mb-2"></h2>
             
             <div id="browse-only-banner" class="hidden bg-stone-100 border border-stone-300 text-stone-700 text-xs p-3 rounded-lg mb-5 leading-relaxed text-center font-medium">
@@ -312,6 +315,36 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
+        // 🎯 輔助函式：將任何 Excel 回傳的時間格式文字精準轉換成純粹的 "HH:mm"
+        function parseToTimeString(timeInput) {
+            const defaultStr = "13:00";
+            if (!timeInput) return defaultStr;
+            const str = String(timeInput).trim();
+            
+            // 如果是標準 ISO 時間格式 (包含 T 或是 '-' 的完整日期格式)
+            if (str.indexOf("T") > -1 || str.indexOf("-") > -1) {
+                try {
+                    const parsedDate = new Date(str);
+                    if (!isNaN(parsedDate.getTime())) {
+                        let h = String(parsedDate.getHours()).padStart(2, '0');
+                        let m = String(parsedDate.getMinutes()).padStart(2, '0');
+                        return `${h}:${m}`;
+                    }
+                } catch(e) {}
+            }
+            
+            // 如果原本就是乾淨的 HH:mm (例如 16:00)
+            if (str.indexOf(":") > -1) {
+                const parts = str.split(":");
+                if (parts[0].length <= 2 && parts[1].length >= 2) {
+                    let h = String(parseInt(parts[0]) || 0).padStart(2, '0');
+                    let m = String(parseInt(parts[1]) || 0).padStart(2, '0');
+                    return `${h}:${m}`;
+                }
+            }
+            return defaultStr;
+        }
+
         document.getElementById('go-order-btn').addEventListener('click', function() {
             if (!selectedBrand) return;
             
@@ -319,14 +352,27 @@
             document.getElementById('entrance-stage').classList.add('hidden');
             document.getElementById('order-stage').classList.remove('hidden');
             document.getElementById('order-target').innerText = "訂購廠商：" + selectedBrand.name;
+
+            const promoBanner = document.getElementById('dynamic-promo-banner');
+            let bannerHtml = `
+                <div class="bg-amber-50 border-amber-200 text-amber-800 p-2.5 rounded-lg border">
+                    🎁 <strong>場地問券限時回饋：</strong>填寫問券現場即享<strong>折價10元</strong>優惠！👉 <a href="https://forms.gle/zp2bKyBMKqrpc1fZ9" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline hover:text-blue-800">點此填寫問券</a>
+                </div>
+            `;
+
+            if (selectedBrand.name.indexOf("大麗士") > -1) {
+                bannerHtml += `
+                    <div class="bg-emerald-50 border-emerald-200 text-emerald-800 p-2.5 rounded-lg border mt-2">
+                        🔥 <strong>大麗士獨家加碼：</strong>限時3日！點購可麗餅即享 <strong>CAMA 飲品搭配優惠</strong>，數量有限售完為止！
+                    </div>
+                `;
+            }
+
+            promoBanner.innerHTML = bannerHtml;
+            promoBanner.classList.remove('hidden');
             
-            let configCutoff = String(selectedBrand.cutoffTime || "13:00");
-            if (configCutoff.indexOf("T") > -1) {
-                configCutoff = configCutoff.split("T")[1].substring(0, 5);
-            }
-            if (!configCutoff || configCutoff.length !== 5) {
-                configCutoff = "13:00";
-            }
+            // 🚀 防呆升級：使用 parseToTimeString 確保截止時間絕對正確
+            let configCutoff = parseToTimeString(selectedBrand.cutoffTime);
             
             document.getElementById('cutoff-notice-msg').innerHTML = `
                 <p>1. 💡 每日預點最後時間為 ${configCutoff} 止，如仍有當日點餐需求，歡迎洽詢廠商。</p>
@@ -445,26 +491,15 @@
                 timeSelect.disabled = false;
                 timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black";
                 
-                let startStr = String(selectedBrand.startTime || "17:30");
-                let endStr = String(selectedBrand.endTime || "19:30");
+                // 🚀 防呆升級：使用全新的時間字串提取機制，完美解決時區時差偏離
+                let startStr = parseToTimeString(selectedBrand.startTime);
+                let endStr = parseToTimeString(selectedBrand.endTime);
                 let intervalMin = parseInt(selectedBrand.timeInterval) || 30;
 
-                // 🚀 核心修復：精準切割 ISO 時間字串防呆，抽取出 HH:mm
-                if (startStr.indexOf("T") > -1) {
-                    startStr = startStr.split("T")[1].substring(0, 5);
-                }
-                if (endStr.indexOf("T") > -1) {
-                    endStr = endStr.split("T")[1].substring(0, 5);
-                }
-
-                // 再次驗證長度，不合規則帶入預設值
-                if (!startStr || startStr.length !== 5) startStr = "17:30";
-                if (!endStr || endStr.length !== 5) endStr = "19:30";
-
-                let startHour = parseInt(startStr.split(":")[0]) || 17;
-                let startMin = parseInt(startStr.split(":")[1]) || 30;
-                let endHour = parseInt(endStr.split(":")[0]) || 19;
-                let endMin = parseInt(endStr.split(":")[1]) || 30;
+                let startHour = parseInt(startStr.split(":")[0]);
+                let startMin = parseInt(startStr.split(":")[1]);
+                let endHour = parseInt(endStr.split(":")[0]);
+                let endMin = parseInt(endStr.split(":")[1]);
 
                 let startTotalMinutes = startHour * 60 + startMin;
                 let endTotalMinutes = endHour * 60 + endMin;
