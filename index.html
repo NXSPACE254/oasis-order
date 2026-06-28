@@ -119,11 +119,6 @@
                                 <label class="block text-gray-700 font-medium mb-1">取餐時間</label>
                                 <select id="pickup_time" required class="w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black">
                                     <option value="" disabled selected>請選擇時間</option>
-                                    <option value="17:30">17:30</option>
-                                    <option value="18:00">18:00</option>
-                                    <option value="18:30">18:30</option>
-                                    <option value="19:00">19:00</option>
-                                    <option value="19:30">19:30</option>
                                 </select>
                             </div>
                         </div>
@@ -310,6 +305,13 @@
             closeCustomModal();
         }
 
+        function formatDateString(dObj) {
+            let yyyy = dObj.getFullYear();
+            let mm = String(dObj.getMonth() + 1).padStart(2, '0');
+            let dd = String(dObj.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
         document.getElementById('go-order-btn').addEventListener('click', function() {
             if (!selectedBrand) return;
             
@@ -337,54 +339,51 @@
             let cutHour = parseInt(configCutoff.split(":")[0]) || 13;
             let cutMin = parseInt(configCutoff.split(":")[1]) || 0;
 
-            // 計算兩週邊界（本週一 00:00 至 下週日 23:59）
-            let startOfWeek = new Date(now);
+            let mondayObj = new Date(now);
             let daysToMonday = now.getDay() === 0 ? 6 : now.getDay() - 1;
-            startOfWeek.setDate(now.getDate() - daysToMonday);
-            startOfWeek.setHours(0, 0, 0, 0);
+            mondayObj.setDate(now.getDate() - daysToMonday);
+            let startOfWeekStr = formatDateString(mondayObj);
 
-            let endOfNextWeek = new Date(startOfWeek);
-            endOfNextWeek.setDate(startOfWeek.getDate() + 13);
-            endOfNextWeek.setHours(23, 59, 59, 999);
+            let sundayObj = new Date(mondayObj);
+            sundayObj.setDate(mondayObj.getDate() + 13);
+            let endOfNextWeekStr = formatDateString(sundayObj);
 
-            let todayZero = new Date(now);
-            todayZero.setHours(0, 0, 0, 0);
+            let todayStr = formatDateString(now);
 
-            // 🎯 核心修正：抓取 Excel 後台設定的 rawDates 進行精準判斷
             if (selectedBrand.rawDates) {
                 let excelDateStrings = selectedBrand.rawDates.split(",");
                 
                 excelDateStrings.forEach(dStr => {
-                    let tDate = new Date(dStr.trim() + "T00:00:00");
-                    if (isNaN(tDate.getTime())) return;
+                    let cleanStr = dStr.trim();
+                    if (cleanStr.length !== 10) return; 
 
-                    // 篩選一：必須在「當週一至下週日」這14天的範圍內，不符直接過濾
-                    if (tDate < startOfWeek || tDate > endOfNextWeek) {
+                    if (cleanStr < startOfWeekStr || cleanStr > endOfNextWeekStr) {
                         return;
                     }
 
-                    // 篩選二：如果是小於今天的過去日期，直接隱藏隱形，不可見
-                    if (tDate < todayZero) {
+                    if (cleanStr < todayStr) {
                         return;
                     }
 
                     isBrowseOnlyMode = false; 
 
-                    let opt = document.createElement('option');
+                    let parts = cleanStr.split("-");
+                    let tDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                     let showText = `${tDate.getMonth()+1}/${tDate.getDate()}(${['日','一','二','三','四','五','六'][tDate.getDay()]})`;
                     
-                    let yyyy = tDate.getFullYear();
-                    let mm = String(tDate.getMonth() + 1).padStart(2, '0');
-                    let dd = String(tDate.getDate()).padStart(2, '0');
-                    opt.value = `${yyyy}-${mm}-${dd}`;
+                    let opt = document.createElement('option');
+                    opt.value = cleanStr;
 
-                    let deadline = new Date(tDate);
-                    deadline.setHours(cutHour, cutMin, 0, 0);
-
-                    // 篩選三：如果是今天且超過最後截止時間，顯示但標註超時反灰
-                    if (tDate.getTime() === todayZero.getTime() && now.getTime() >= deadline.getTime()) {
-                        opt.setAttribute('data-expired', 'true');
-                        opt.textContent = showText + `(超過最後點餐時間)`;
+                    if (cleanStr === todayStr) {
+                        let deadline = new Date(now);
+                        deadline.setHours(cutHour, cutMin, 0, 0);
+                        
+                        if (now.getTime() >= deadline.getTime()) {
+                            opt.setAttribute('data-expired', 'true');
+                            opt.textContent = showText + `(超過最後點餐時間)`;
+                        } else {
+                            opt.textContent = showText;
+                        }
                     } else {
                         opt.textContent = showText;
                     }
@@ -421,6 +420,7 @@
             checkSelectedDateCutoff();
         });
 
+        // 🎯 【新增核心函數】：根據選取厂商的 Excel 配置，動態精算並生成時間選單
         function checkSelectedDateCutoff() {
             const dateSelect = document.getElementById('pickup_date');
             const timeSelect = document.getElementById('pickup_time');
@@ -443,15 +443,37 @@
                 timeSelect.disabled = false;
                 timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black";
                 
+                // 🚀 動態解析 Excel 設定的起訖與間隔時間
+                let startStr = selectedBrand.startTime || "17:30";
+                let endStr = selectedBrand.endTime || "19:30";
+                let intervalMin = parseInt(selectedBrand.timeInterval) || 30; // 預設 30 分鐘
+
+                // 如果 Excel 回傳資料包含完整時間戳記字串防呆
+                if (startStr.indexOf("T") > -1) startStr = "17:30";
+                if (endStr.indexOf("T") > -1) endStr = "19:30";
+
+                let startHour = parseInt(startStr.split(":")[0]) || 17;
+                let startMin = parseInt(startStr.split(":")[1]) || 30;
+                let endHour = parseInt(endStr.split(":")[0]) || 19;
+                let endMin = parseInt(endStr.split(":")[1]) || 30;
+
+                // 將起訖時間轉換為今日的分鐘總數，便於迴圈計算
+                let startTotalMinutes = startHour * 60 + startMin;
+                let endTotalMinutes = endHour * 60 + endMin;
+
                 let currentVal = timeSelect.value;
-                timeSelect.innerHTML = `
-                    <option value="" disabled ${!currentVal ? 'selected' : ''}>請選擇時間</option>
-                    <option value="17:30" ${currentVal==='17:30'?'selected':''}>17:30</option>
-                    <option value="18:00" ${currentVal==='18:00'?'selected':''}>18:00</option>
-                    <option value="18:30" ${currentVal==='18:30'?'selected':''}>18:30</option>
-                    <option value="19:00" ${currentVal==='19:00'?'selected':''}>19:00</option>
-                    <option value="19:30" ${currentVal==='19:30'?'selected':''}>19:30</option>
-                `;
+                let timeOptionsHtml = `<option value="" disabled ${!currentVal ? 'selected' : ''}>請選擇時間</option>`;
+
+                // 利用迴圈動態算出每一個取餐時間點
+                for (let min = startTotalMinutes; min <= endTotalMinutes; min += intervalMin) {
+                    let h = Math.floor(min / 60);
+                    let m = min % 60;
+                    let timeText = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    
+                    timeOptionsHtml += `<option value="${timeText}" ${currentVal === timeText ? 'selected' : ''}>${timeText}</option>`;
+                }
+
+                timeSelect.innerHTML = timeOptionsHtml;
 
                 submitBtn.disabled = false;
                 submitBtn.innerText = "確認送出預訂單";
