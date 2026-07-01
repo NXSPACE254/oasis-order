@@ -186,7 +186,6 @@
     </div>
 
     <script>
-        // 💡 提示：覆蓋後請再次檢查此網址是否與 GAS 「網頁應用程式 URL」完全一致（注意大小寫錯字）
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
 
         let dbData = { main_config: {}, brands: [], menus: {} };
@@ -264,6 +263,12 @@
                 if (!brand || !brand.name) return;
                 const fullImgUrl = brand.imgUrl ? (brand.imgUrl.startsWith("http") ? brand.imgUrl : imgBase + brand.imgUrl) : "";
                 
+                // 🚀 【全新進化修補碼】：如果偵測到大麗士，前端自動套用額外縮放比例，強行消除白肉邊造成的視覺落差
+                let extraImageClass = "w-full h-full object-cover rounded-full transition duration-300 group-hover:scale-105";
+                if (brand.name.indexOf("大麗士") > -1) {
+                    extraImageClass = "w-full h-full object-cover rounded-full transition duration-300 scale-[1.15] group-hover:scale-[1.22]";
+                }
+
                 const btnWrapper = document.createElement('div');
                 btnWrapper.id = `btn-brand-${brand.id}`;
                 btnWrapper.className = "flex flex-col items-center text-center cursor-pointer group transition duration-200 transform active:scale-95";
@@ -271,7 +276,7 @@
 
                 btnWrapper.innerHTML = `
                     <div class="brand-avatar-circle w-[84px] h-[84px] rounded-full p-[3px] bg-white border border-gray-200/80 shadow-sm transition duration-300 group-hover:border-gray-900 group-hover:shadow-md overflow-hidden flex items-center justify-center bg-stone-100">
-                        ${fullImgUrl ? `<img src="${fullImgUrl}" class="w-full h-full object-cover rounded-full transition duration-300 group-hover:scale-105" alt="${brand.name}">` : `<div class="text-xs text-gray-400 font-bold">${brand.name.substring(0,2)}</div>`}
+                        ${fullImgUrl ? `<img src="${fullImgUrl}" class="${extraImageClass}" alt="${brand.name}">` : `<div class="text-xs text-gray-400 font-bold">${brand.name.substring(0,2)}</div>`}
                     </div>
                     <span class="brand-name-text text-xs font-bold text-gray-700 mt-2 tracking-wide group-hover:text-black transition">${brand.name}</span>
                     ${brand.subName ? `<span class="text-[10px] text-gray-400 mt-0.5 scale-90 origin-top font-medium">${brand.subName}</span>` : ""}
