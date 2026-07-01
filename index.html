@@ -200,52 +200,78 @@
                 if (homeLineBanner) homeLineBanner.classList.remove('hidden');
             }
 
-            fetch(GAS_URL).then(res => res.json()).then(data => {
+            fetch(GAS_URL)
+            .then(res => res.json())
+            .then(data => {
+                // 🛡️ 雙重保險防崩潰防線：若後台回傳異常或格式不符，建立防空機制
+                if (!data || typeof data !== 'object') {
+                    data = { main_config: {}, brands: [], menus: {} };
+                }
+                if (!data.main_config) data.main_config = {};
+                if (!data.brands) data.brands = [];
+                if (!data.menus) data.menus = {};
+
                 dbData = data;
                 switchVenue('oasis'); 
                 
-                // 🚀 【畫質全面升級】：直接動態渲染高畫質圓形按鈕 DOM，保證不糊
                 renderHighDefBrandButtons();
 
                 document.getElementById('loading-spinner').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
                 checkOrderHistory();
+            })
+            .catch((err) => {
+                console.error("初始化資料失敗，強制開啟安全本地模式", err);
+                // 🛡️ 萬一網路中斷或後台掛點，強制網頁進入安全模式，避免無限轉圈圈
+                dbData = { main_config: {}, brands: [], menus: {} };
+                switchVenue('oasis');
+                document.getElementById('loading-spinner').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
             });
         });
 
         function switchVenue(venue) {
             currentVenue = venue;
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`tab-${venue}`).classList.add('active');
+            const tabBtn = document.getElementById(`tab-${venue}`);
+            if (tabBtn) {
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                tabBtn.classList.add('active');
+            }
 
-            const title = dbData.main_config[`activity_title_${venue}`] || "最新活動資訊";
-            const notice = dbData.main_config[`notice_text_${venue}`] || "暫無公告資訊。";
+            // 安全讀取設定，避免為空時報錯
+            const configObj = dbData.main_config || {};
+            const title = configObj[`activity_title_${venue}`] || "最新活動資訊";
+            const notice = configObj[`notice_text_${venue}`] || "暫無公告資訊。";
 
-            document.getElementById('announcement-title').innerText = "📅 " + title;
-            document.getElementById('dynamic-announcement-box').innerText = notice;
+            const annTitleEl = document.getElementById('announcement-title');
+            const annBoxEl = document.getElementById('dynamic-announcement-box');
+            if (annTitleEl) annTitleEl.innerText = "📅 " + title;
+            if (annBoxEl) annBoxEl.innerText = notice;
         }
 
-        // 🚀 【全新高畫質品牌按鈕渲染機制】：使用標準 HTML 網格與圓形容器，完美解決高屏解析度模糊問題
         function renderHighDefBrandButtons() {
             const gridContainer = document.getElementById('brandGridContainer');
             if (!gridContainer) return;
             gridContainer.innerHTML = "";
 
-            const count = dbData.brands.length;
-            if (count === 0) return;
+            const brandsList = dbData.brands || [];
+            if (brandsList.length === 0) {
+                gridContainer.innerHTML = `<p class="col-span-3 text-center text-xs text-gray-400 py-4">📅 本週暫無快閃店家排程</p>`;
+                return;
+            }
 
-            const imgBase = dbData.main_config.github_img_base || "";
+            const configObj = dbData.main_config || {};
+            const imgBase = configObj.github_img_base || "";
 
-            dbData.brands.forEach((brand) => {
+            brandsList.forEach((brand) => {
+                if (!brand || !brand.name) return;
                 const fullImgUrl = brand.imgUrl ? (brand.imgUrl.startsWith("http") ? brand.imgUrl : imgBase + brand.imgUrl) : "";
                 
-                // 建立精美的品牌按鈕外殼
                 const btnWrapper = document.createElement('div');
                 btnWrapper.id = `btn-brand-${brand.id}`;
                 btnWrapper.className = "flex flex-col items-center text-center cursor-pointer group transition duration-200 transform active:scale-95";
                 btnWrapper.onclick = () => selectBrandHighDef(brand);
 
-                // 建立最銳利的圓形外框與高畫質圖片節點
                 btnWrapper.innerHTML = `
                     <div class="brand-avatar-circle w-[84px] h-[84px] rounded-full p-[3px] bg-white border border-gray-200/80 shadow-sm transition duration-300 group-hover:border-gray-900 group-hover:shadow-md overflow-hidden flex items-center justify-center bg-stone-100">
                         ${fullImgUrl ? `<img src="${fullImgUrl}" class="w-full h-full object-cover rounded-full transition duration-300 group-hover:scale-105" alt="${brand.name}">` : `<div class="text-xs text-gray-400 font-bold">${brand.name.substring(0,2)}</div>`}
@@ -258,11 +284,10 @@
             });
         }
 
-        // 高畫質按鈕選取切換與高亮邏輯
         function selectBrandHighDef(brand) {
+            if (!brand) return;
             selectedBrand = brand;
             
-            // 重設所有圓圈狀態，只高亮被選中的那一個
             document.querySelectorAll('.brand-avatar-circle').forEach(circle => {
                 circle.className = "brand-avatar-circle w-[84px] h-[84px] rounded-full p-[3px] bg-white border border-gray-200/80 shadow-sm transition duration-300 group-hover:border-gray-900 group-hover:shadow-md overflow-hidden flex items-center justify-center bg-stone-100";
             });
@@ -270,7 +295,6 @@
                 txt.className = "brand-name-text text-xs font-bold text-gray-700 mt-2 tracking-wide group-hover:text-black transition";
             });
 
-            // 為選中的廠商套用深色高亮框
             const activeBtn = document.getElementById(`btn-brand-${brand.id}`);
             if (activeBtn) {
                 activeBtn.querySelector('.brand-avatar-circle').className = "brand-avatar-circle w-[84px] h-[84px] rounded-full p-[3px] bg-white border-2 border-gray-900 shadow-md overflow-hidden flex items-center justify-center";
@@ -365,7 +389,7 @@
                 </div>
             `;
 
-            if (selectedBrand.name.indexOf("大麗士") > -1) {
+            if (selectedBrand.name && selectedBrand.name.indexOf("大麗士") > -1) {
                 bannerHtml += `
                     <div class="bg-emerald-50 border-emerald-200 text-emerald-800 p-2.5 rounded-lg border mt-2 shadow-xs">
                         🔥 <strong>大麗士獨家加碼：</strong>6/30-7/2限定！點購可麗餅即享 <strong>CAMA指定飲品優惠</strong>，數量有限售完為止！
@@ -404,7 +428,7 @@
             let todayStr = formatDateString(now);
 
             if (selectedBrand.rawDates) {
-                let excelDateStrings = selectedBrand.rawDates.split(",");
+                let excelDateStrings = String(selectedBrand.rawDates).split(",");
                 
                 excelDateStrings.forEach(dStr => {
                     let cleanStr = dStr.trim();
@@ -529,8 +553,9 @@
         function renderMenuList() {
             const menuContainer = document.getElementById('menu_list_container');
             menuContainer.innerHTML = "";
-            const brandMenu = dbData.menus[selectedBrand.id] || [];
-            const imgBase = dbData.main_config.github_img_base || "";
+            const brandMenu = dbData.menus ? (dbData.menus[selectedBrand.id] || []) : [];
+            const configObj = dbData.main_config || {};
+            const imgBase = configObj.github_img_base || "";
             const browseBanner = document.getElementById('browse-only-banner');
             const isBrowseOnlyMode = browseBanner.classList.contains('hidden') ? false : true;
 
@@ -641,7 +666,7 @@
             }
 
             let finalItems = []; let total = 0; let itemsOrderedMap = {};
-            const brandMenu = dbData.menus[selectedBrand.id] || [];
+            const brandMenu = dbData.menus ? (dbData.menus[selectedBrand.id] || []) : [];
 
             brandMenu.forEach((item, index) => {
                 const qtySelect = document.querySelector(`select[name="qty_${index}"]`);
@@ -709,11 +734,9 @@
             openCustomModal("📋 請確認您的預訂內容", confirmBody, actionButtons);
         });
 
-        // ✨ 修正後的標準 CORS 通道發送機制
         function executeFinalSubmit() {
             openCustomModal("⏳ 訂單傳送中", "<p class='text-center py-4 text-stone-500 font-medium animate-pulse'>正在紀錄您的餐點資訊，請勿關閉網頁...</p>", "");
 
-            // 💡 移除 mode: "no-cors"，走正規的跨網域傳輸
             fetch(GAS_URL, { 
                 method: "POST", 
                 headers: {
@@ -732,8 +755,6 @@
                     closeCustomModal();
                 }
             }).catch(() => {
-                // 由於 GAS 的 302 重新導向特性，部分瀏覽器仍可能觸發 CORS 錯誤捕捉
-                // 但實測上此時資料多半已安全寫入後台。因此進行雙重保險降級處理，確保使用者體驗流暢
                 localStorage.setItem('nx_space_last_order', JSON.stringify(window.pendingOrder));
                 alert("🎉 預訂單已成功送出！已通知廠商進行備餐作業。");
                 location.reload();
@@ -745,6 +766,11 @@
             document.getElementById('modal-body').innerHTML = bodyHtml;
             document.getElementById('modal-actions').innerHTML = actionButtonsHtml;
             document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function removeLoadingSpinner() {
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) spinner.classList.add('hidden');
         }
 
         function closeCustomModal() {
@@ -777,11 +803,14 @@
             const localData = localStorage.getItem('nx_space_last_order');
             if (localData) {
                 const order = JSON.parse(localData);
-                document.getElementById('history-card').classList.remove('hidden');
-                document.getElementById('hist-brand').innerText = order.brand;
-                document.getElementById('hist-time').innerText = `${order.date} ${order.time} (${order.dining_option || '外帶'})`;
-                document.getElementById('hist-content').innerText = order.order_content;
-                document.getElementById('hist-total').innerText = order.total;
+                const histCard = document.getElementById('history-card');
+                if (histCard) {
+                    histCard.classList.remove('hidden');
+                    document.getElementById('hist-brand').innerText = order.brand || "";
+                    document.getElementById('hist-time').innerText = `${order.date || ''} ${order.time || ''} (${order.dining_option || '外帶'})`;
+                    document.getElementById('hist-content').innerText = order.order_content || "";
+                    document.getElementById('hist-total').innerText = order.total || "0";
+                }
             }
         }
     </script>
