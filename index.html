@@ -65,9 +65,9 @@
                         <span id="announcement-title" class="text-xs font-bold text-stone-700 tracking-wide flex items-center">最新活動資訊</span>
                         <span id="announce-arrow" class="text-xs text-stone-400 transition-transform duration-200">▼</span>
                     </button>
-                    <div id="announce-content" class="p-4 border-t border-gray-100 text-xs text-stone-600 bg-white/50">
+                    <div id="announce-content" class="p-3 border-t border-gray-100 text-xs text-stone-600 bg-white/50">
                         <!-- 🚀 結構化美化公告容器 -->
-                        <div id="dynamic-announcement-box" class="space-y-3"></div>
+                        <div id="dynamic-announcement-box" class="space-y-2"></div>
                     </div>
                 </div>
 
@@ -228,7 +228,7 @@
             });
         });
 
-        // 🚀 【全新智能排版渲染引擎】：將試算表的純文字加工轉化成高質感 UI 卡片
+        // 🚀 【極致緊湊適應排版引擎】：解決大麗士等長文案在窄螢幕卡字與兼顧縮減間距的問題
         function renderStructuredNotice(rawText) {
             const container = document.getElementById('dynamic-announcement-box');
             if (!container) return;
@@ -249,10 +249,10 @@
                 // 偵測大標題（例如「本週活動」、「活動預告」）
                 if (cleanLine.indexOf('本週') > -1 || cleanLine.indexOf('預告') > -1 || cleanLine.indexOf('活動') > -1 && cleanLine.indexOf('|') === -1) {
                     currentSection = document.createElement('div');
-                    currentSection.className = "mt-3 first:mt-0";
+                    currentSection.className = "mt-2 first:mt-0";
                     
                     const secTitle = document.createElement('h4');
-                    secTitle.className = "text-[11px] font-bold text-stone-400 tracking-wider mb-2 border-b border-stone-100 pb-1 uppercase";
+                    secTitle.className = "text-[10px] font-bold text-stone-400 tracking-wider mb-1.5 border-b border-stone-100/60 pb-0.5 uppercase";
                     secTitle.innerText = cleanLine;
                     
                     currentSection.appendChild(secTitle);
@@ -260,13 +260,12 @@
                     return;
                 }
 
-                // 解析標準活動列格式： "07/04(六) | [餐車] TO THE PIZZA"
+                // 解析標準活動列格式： "日期 | [類型] 廠商名稱"
                 if (cleanLine.indexOf('|') > -1) {
                     const parts = cleanLine.split('|');
                     const datePart = parts[0].trim();
                     const contentPart = parts[1].trim();
 
-                    // 擷取中括號內的活動類型（如 [餐車]）
                     let typeBadgeHtml = "";
                     let nameText = contentPart;
                     const typeMatch = contentPart.match(/^\[(.+?)\]/);
@@ -275,26 +274,22 @@
                         const typeName = typeMatch[1];
                         nameText = contentPart.replace(`[${typeName}]`, "").trim();
                         
-                        // 依據不同的活動類型動態給予精緻的 Tailwind 顏色
-                        let colorClass = "bg-stone-100 text-stone-600"; // 預設灰色
+                        let colorClass = "bg-stone-100 text-stone-600";
                         if (typeName.indexOf("餐車") > -1) colorClass = "bg-amber-50 text-amber-700 border-amber-200/60";
                         if (typeName.indexOf("畫展") > -1 || typeName.indexOf("藝文") > -1) colorClass = "bg-purple-50 text-purple-700 border-purple-200/60";
                         if (typeName.indexOf("市集") > -1) colorClass = "bg-emerald-50 text-emerald-700 border-emerald-200/60";
                         if (typeName.indexOf("快閃") > -1) colorClass = "bg-blue-50 text-blue-700 border-blue-200/60";
 
-                        typeBadgeHtml = `<span class="px-2 py-0.5 text-[10px] font-bold rounded-md border ${colorClass} tracking-wide flex-shrink-0">${typeName}</span>`;
+                        typeBadgeHtml = `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded border ${colorClass} tracking-wide flex-shrink-0">${typeName}</span>`;
                     }
 
-                    // 建立一條結構化的精美活動橫列
+                    // 🛠️ 改造點：由 justify-between 轉為緊湊型 justify-start，移除冗餘右側箭頭，寬度 100% 釋放給字體
                     const rowEl = document.createElement('div');
-                    rowEl.className = "flex items-center justify-between py-2 px-3 bg-stone-50/50 rounded-xl border border-stone-100/40 shadow-2xs hover:bg-white transition mb-1.5";
+                    rowEl.className = "flex items-center justify-start space-x-2 py-1.5 px-2 bg-stone-50/70 rounded-lg border border-stone-100/60 shadow-3xs hover:bg-white transition mb-1";
                     rowEl.innerHTML = `
-                        <div class="flex items-center space-x-3 truncate">
-                            <span class="text-xs font-black text-stone-800 bg-stone-200/50 px-2 py-0.5 rounded-md font-mono">${datePart}</span>
-                            ${typeBadgeHtml}
-                            <span class="text-xs font-bold text-stone-900 truncate tracking-wide">${nameText}</span>
-                        </div>
-                        <span class="text-[10px] text-stone-400 font-bold font-mono">⚡ Go</span>
+                        <span class="text-[10px] font-bold text-stone-700 bg-stone-200/50 px-1.5 py-0.5 rounded font-mono flex-shrink-0">${datePart}</span>
+                        ${typeBadgeHtml}
+                        <span class="text-xs font-bold text-stone-900 tracking-wide truncate flex-1 min-w-0">${nameText}</span>
                     `;
 
                     if (currentSection) {
@@ -303,9 +298,8 @@
                         container.appendChild(rowEl);
                     }
                 } else {
-                    // 一般雜項純文字行
                     const pEl = document.createElement('p');
-                    pEl.className = "text-xs text-stone-500 pl-2 leading-relaxed";
+                    pEl.className = "text-[11px] text-stone-500 pl-2 leading-relaxed";
                     pEl.innerText = cleanLine;
                     if (currentSection) currentSection.appendChild(pEl); else container.appendChild(pEl);
                 }
@@ -327,7 +321,6 @@
             const annTitleEl = document.getElementById('announcement-title');
             if (annTitleEl) annTitleEl.innerText = "📅 " + title;
             
-            // 呼叫智能排版引擎渲染
             renderStructuredNotice(notice);
         }
 
