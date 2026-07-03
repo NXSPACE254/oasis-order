@@ -27,9 +27,9 @@
         }
     </style>
 </head>
-<body class="bg-cover bg-bottom bg-no-repeat bg-fixed bg-white" style="background-image: url('NX SPACE綠洲計畫底圖.jpg');">
+<body class="bg-cover bg-bottom bg-no-repeat bg-fixed bg-white pb-24" style="background-image: url('NX SPACE綠洲計畫底圖.jpg');">
 
-    <div class="rwd-container max-w-md mx-auto p-4 min-h-screen">
+    <div class="rwd-container max-w-md mx-auto p-4 min-h-screen relative">
 
         <div id="custom-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl border border-gray-100 transform transition-all duration-200">
@@ -66,7 +66,6 @@
                         <span id="announce-arrow" class="text-xs text-stone-400 transition-transform duration-200">▼</span>
                     </button>
                     <div id="announce-content" class="p-3 border-t border-gray-100 text-xs text-stone-600 bg-white/50">
-                        <!-- 🚀 結構化美化公告容器 -->
                         <div id="dynamic-announcement-box" class="space-y-2"></div>
                     </div>
                 </div>
@@ -104,7 +103,7 @@
                     <p class="text-xs font-bold text-stone-800 mb-2 tracking-wide">🤝 歡迎品牌 ｜活動展覽｜餐車｜策展活動合作</p>
                     <div class="flex justify-center space-x-3 text-xs">
                         <a href="https://lin.ee/VAwAg1I" target="_blank" rel="noopener noreferrer" class="px-4 py-1.5 bg-[#06C755] text-white rounded-full font-medium shadow-sm flex items-center">LINE 客服</a>
-                        <a href="https://www.facebook.com/nxspace254" target="_blank" rel="noopener noreferrer" class="px-4 py-1.5 bg-[#1877F2] text-white rounded-full font-medium shadow-sm flex items-center">臉書專頁</a>
+                        <a href="https://www.facebook.com/nxspace254" target="_blank" rel="noopener noreferrer" class="px-4 py-1.5 bg-[#1877F2] text-white rounded-full font-medium shadow-sm flex items-center">臉書專專</a>
                     </div>
                 </div>
 
@@ -133,7 +132,7 @@
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-1">聯絡電話</label>
-                            <input type="tel" id="cust_phone" required class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white/80">
+                            <input type="tel" id="cust_phone" required placeholder="例如: 0912-345-678 或 089-345678" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white/80">
                         </div>
                         <div>
                             <div class="grid grid-cols-2 gap-4">
@@ -186,8 +185,23 @@
         </div>
     </div>
 
+    <div id="sticky-cart-bar" class="hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm bg-stone-900 text-white px-4 py-3 rounded-xl shadow-2xl z-40 flex items-center justify-between animate-fade-in-up">
+        <div class="flex items-center space-x-2">
+            <span class="text-base">🛒</span>
+            <div class="text-xs font-medium">
+                <span id="cart-qty" class="font-bold text-amber-400 text-sm">0</span> 份餐點 ｜ 
+                <span class="text-stone-400">總計:</span> <span id="cart-total-price" class="text-sm font-black text-emerald-400">$0</span>
+            </div>
+        </div>
+        <button onclick="scrollToSubmitForm()" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs font-bold px-3 py-1.5 rounded-lg transition tracking-wide shadow-md">
+            填寫資料 →
+        </button>
+    </div>
+
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
+        // 🚀 4. 快取緩存時間設定在10分鐘 (10 * 60 * 1000 毫秒)
+        const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
         let selectedBrand = null;
@@ -201,34 +215,69 @@
                 if (homeLineBanner) homeLineBanner.classList.remove('hidden');
             }
 
-            fetch(GAS_URL)
-            .then(res => res.json())
-            .then(data => {
-                if (!data || typeof data !== 'object') {
-                    data = { main_config: {}, brands: [], menus: {} };
-                }
-                if (!data.main_config) data.main_config = {};
-                if (!data.brands) data.brands = [];
-                if (!data.menus) data.menus = {};
+            // 🚀 5. 電話格式化即時監聽過濾
+            const phoneInput = document.getElementById('cust_phone');
+            if (phoneInput) {
+                phoneInput.addEventListener('input', (e) => {
+                    let num = e.target.value.replace(/\D/g, ''); 
+                    if (num.startsWith('09')) {
+                        if (num.length > 4 && num.length <= 7) num = num.slice(0,4) + '-' + num.slice(4);
+                        else if (num.length > 7) num = num.slice(0,4) + '-' + num.slice(4,7) + '-' + num.slice(7,10);
+                    } else if (num.startsWith('02') || num.startsWith('04') || num.startsWith('07') || num.startsWith('03') || num.startsWith('05') || num.startsWith('06')) {
+                        if (num.length > 2 && num.length <= 6) num = num.slice(0,2) + '-' + num.slice(2);
+                        else if (num.length > 6) num = num.slice(0,2) + '-' + num.slice(2,6) + '-' + num.slice(6,10);
+                    } else if (num.startsWith('089') || num.startsWith('037') || num.startsWith('049') || num.startsWith('082') || num.startsWith('083')) {
+                        if (num.length > 3 && num.length <= 6) num = num.slice(0,3) + '-' + num.slice(3);
+                        else if (num.length > 6) num = num.slice(0,3) + '-' + num.slice(3,6) + '-' + num.slice(6,9);
+                    }
+                    e.target.value = num;
+                });
+            }
 
-                dbData = data;
-                switchVenue('oasis'); 
-                renderHighDefBrandButtons();
+            // 🚀 4. 引入10分鐘快取緩存讀取機制
+            const cachedData = localStorage.getItem('nx_cache_data');
+            const cachedTime = localStorage.getItem('nx_cache_timestamp');
+            const nowTime = Date.now();
 
-                document.getElementById('loading-spinner').classList.add('hidden');
-                document.getElementById('main-content').classList.remove('hidden');
-                checkOrderHistory();
-            })
-            .catch((err) => {
-                console.error("CORS 通道阻斷，啟用安全降級渲染", err);
-                dbData = { main_config: {}, brands: [], menus: {} };
-                switchVenue('oasis');
-                document.getElementById('loading-spinner').classList.add('hidden');
-                document.getElementById('main-content').classList.remove('hidden');
-            });
+            if (cachedData && cachedTime && (nowTime - cachedTime < CACHE_DURATION)) {
+                console.log("⚡ 讀取10分鐘本機快取緩存機制生效，減少呼叫配額");
+                initializePageData(JSON.parse(cachedData));
+            } else {
+                fetch(GAS_URL)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.brands && data.brands.length > 0) {
+                        localStorage.setItem('nx_cache_data', JSON.stringify(data));
+                        localStorage.setItem('nx_cache_timestamp', nowTime.toString());
+                    }
+                    initializePageData(data);
+                })
+                .catch((err) => {
+                    console.error("CORS 通道阻斷，啟用安全降級渲染", err);
+                    if(cachedData) {
+                        initializePageData(JSON.parse(cachedData));
+                    } else {
+                        initializePageData({ main_config: {}, brands: [], menus: {} });
+                    }
+                });
+            }
         });
 
-        // 🚀 【極致緊湊適應排版引擎】：解決大麗士等長文案在窄螢幕卡字與兼顧縮減間距的問題
+        function initializePageData(data) {
+            if (!data || typeof data !== 'object') data = { main_config: {}, brands: [], menus: {} };
+            if (!data.main_config) data.main_config = {};
+            if (!data.brands) data.brands = [];
+            if (!data.menus) data.menus = {};
+
+            dbData = data;
+            switchVenue('oasis'); 
+            renderHighDefBrandButtons();
+
+            document.getElementById('loading-spinner').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+            checkOrderHistory();
+        }
+
         function renderStructuredNotice(rawText) {
             const container = document.getElementById('dynamic-announcement-box');
             if (!container) return;
@@ -246,7 +295,6 @@
                 let cleanLine = line.trim();
                 if (cleanLine === "") return;
 
-                // 偵測大標題（例如「本週活動」、「活動預告」）
                 if (cleanLine.indexOf('本週') > -1 || cleanLine.indexOf('預告') > -1 || cleanLine.indexOf('活動') > -1 && cleanLine.indexOf('|') === -1) {
                     currentSection = document.createElement('div');
                     currentSection.className = "mt-2 first:mt-0";
@@ -260,7 +308,6 @@
                     return;
                 }
 
-                // 解析標準活動列格式： "日期 | [類型] 廠商名稱"
                 if (cleanLine.indexOf('|') > -1) {
                     const parts = cleanLine.split('|');
                     const datePart = parts[0].trim();
@@ -283,7 +330,6 @@
                         typeBadgeHtml = `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded border ${colorClass} tracking-wide flex-shrink-0">${typeName}</span>`;
                     }
 
-                    // 🛠️ 改造點：由 justify-between 轉為緊湊型 justify-start，移除冗餘右側箭頭，寬度 100% 釋放給字體
                     const rowEl = document.createElement('div');
                     rowEl.className = "flex items-center justify-start space-x-2 py-1.5 px-2 bg-stone-50/70 rounded-lg border border-stone-100/60 shadow-3xs hover:bg-white transition mb-1";
                     rowEl.innerHTML = `
@@ -292,11 +338,7 @@
                         <span class="text-xs font-bold text-stone-900 tracking-wide truncate flex-1 min-w-0">${nameText}</span>
                     `;
 
-                    if (currentSection) {
-                        currentSection.appendChild(rowEl);
-                    } else {
-                        container.appendChild(rowEl);
-                    }
+                    if (currentSection) currentSection.appendChild(rowEl); else container.appendChild(rowEl);
                 } else {
                     const pEl = document.createElement('p');
                     pEl.className = "text-[11px] text-stone-500 pl-2 leading-relaxed";
@@ -342,10 +384,8 @@
                 if (!brand || !brand.name) return;
                 const fullImgUrl = brand.imgUrl ? (brand.imgUrl.startsWith("http") ? brand.imgUrl : imgBase + brand.imgUrl) : "";
                 
+                // 🚀 2. 移除大麗士可麗餅縮圖放大效果，恢復正常填滿
                 let extraImageClass = "w-full h-full object-cover rounded-full transition duration-300 group-hover:scale-105";
-                if (brand.name.indexOf("大麗士") > -1) {
-                    extraImageClass = "w-full h-full object-cover rounded-full transition duration-300 scale-[1.15] group-hover:scale-[1.22]";
-                }
 
                 const btnWrapper = document.createElement('div');
                 btnWrapper.id = `btn-brand-${brand.id}`;
@@ -415,7 +455,51 @@
             document.getElementById('venue-tabs-container').classList.remove('hidden');
             document.getElementById('order-stage').classList.add('hidden');
             document.getElementById('entrance-stage').classList.remove('hidden');
+            document.getElementById('sticky-cart-bar').classList.add('hidden'); 
             closeCustomModal();
+        }
+
+        function scrollToSubmitForm() {
+            document.getElementById('customer-info-fields').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 🚀 1. 購物車動態統計即時更新邏輯
+        function updateStickyCartCalculation() {
+            const qtySelects = document.querySelectorAll('select[name^="qty_"]');
+            let totalQty = 0;
+            let totalPrice = 0;
+            const brandMenu = dbData.menus[selectedBrand.id] || [];
+
+            qtySelects.forEach((select) => {
+                const idx = parseInt(select.name.split('_')[1]);
+                const qty = parseInt(select.value) || 0;
+                const item = brandMenu[idx];
+                
+                if (qty > 0 && item) {
+                    totalQty += qty;
+                    let sum = item.price * qty;
+                    
+                    if (item.options) {
+                        item.options.split(",").forEach((rawOpt, optIdx) => {
+                            const cb = document.querySelector(`input[name="opt_${idx}_${optIdx}"]`);
+                            if (cb && cb.checked) {
+                                let price = parseInt(cb.getAttribute('data-price')) || 0;
+                                sum += (price * qty);
+                            }
+                        });
+                    }
+                    totalPrice += sum;
+                }
+            });
+
+            const cartBar = document.getElementById('sticky-cart-bar');
+            if (totalQty > 0 && !document.getElementById('order-stage').classList.contains('hidden')) {
+                document.getElementById('cart-qty').innerText = totalQty;
+                document.getElementById('cart-total-price').innerText = `$${totalPrice}`;
+                cartBar.classList.remove('hidden');
+            } else {
+                cartBar.classList.add('hidden');
+            }
         }
 
         function formatDateString(dObj) {
@@ -514,13 +598,8 @@
                     let cleanStr = dStr.trim();
                     if (cleanStr.length !== 10) return; 
 
-                    if (cleanStr < startOfWeekStr || cleanStr > endOfNextWeekStr) {
-                        return;
-                    }
-
-                    if (cleanStr < todayStr) {
-                        return;
-                    }
+                    if (cleanStr < startOfWeekStr || cleanStr > endOfNextWeekStr) return;
+                    if (cleanStr < todayStr) return;
 
                     isBrowseOnlyMode = false; 
 
@@ -575,6 +654,7 @@
 
             renderMenuList();
             checkSelectedDateCutoff();
+            updateStickyCartCalculation(); 
         });
 
         function checkSelectedDateCutoff() {
@@ -664,8 +744,9 @@
                         optionsHtml += `<option value="${s}">${s}</option>`;
                     }
                     
+                    // 🚀 連動購物車計算
                     selectSelectorHtml = `
-                        <select name="qty_${index}" onchange="toggleOptionsBox(${index}, this.value)" class="border border-gray-300 rounded p-1 text-xs bg-white focus:ring-1 focus:ring-black">
+                        <select name="qty_${index}" onchange="toggleOptionsBox(${index}, this.value); updateStickyCartCalculation();" class="border border-gray-300 rounded p-1 text-xs bg-white focus:ring-1 focus:ring-black">
                             ${optionsHtml}
                         </select>
                     `;
@@ -704,9 +785,10 @@
                         let parts = rawOpt.split("+");
                         let optName = parts[0].trim();
                         let optPrice = parseInt(parts[1]) || 0;
+                        // 🚀 勾選時也連動計算
                         optDiv.innerHTML += `
                             <label class="flex items-center space-x-2 mt-1 cursor-pointer">
-                                <input type="checkbox" name="opt_${index}_${optIdx}" value="${optName}" data-price="${optPrice}" class="rounded text-black border-gray-300 focus:ring-black">
+                                <input type="checkbox" name="opt_${index}_${optIdx}" value="${optName}" data-price="${optPrice}" onchange="updateStickyCartCalculation()" class="rounded text-black border-gray-300 focus:ring-black">
                                 <span>${optName} (+$${optPrice})</span>
                             </label>
                         `;
@@ -786,6 +868,7 @@
                 <div class="space-y-2 text-left bg-stone-50 p-3 rounded-xl border border-stone-100">
                     <p class="text-stone-700"><strong>🏪 預訂店家：</strong>${selectedBrand.name}</p>
                     <p class="text-stone-700"><strong>👤 取餐姓名：</strong>${document.getElementById('cust_name').value}</p>
+                    <p class="text-stone-700"><strong>📞 聯絡電話：</strong>${document.getElementById('cust_phone').value}</p>
                     <p class="text-stone-700"><strong>📅 取餐時間：</strong>${displayDateText} ${document.getElementById('pickup_time').value}</p>
                     <p class="text-stone-700"><strong>🍽️ 用餐方式：</strong><span class="text-amber-600 font-bold">${finalDiningStyle}</span></p>
                     <div class="border-t border-dashed my-2 pt-2">
@@ -801,10 +884,10 @@
 
             window.pendingOrder = {
                 brandId: selectedBrand.id, brand: selectedBrand.name,
-                name: document.getElementById('cust_name').value, phone: document.getElementById('cust_phone').value,
+                name: document.getElementById('cust_name').value.trim(), phone: document.getElementById('cust_phone').value.trim(),
                 date: displayDateText, time: document.getElementById('pickup_time').value,
                 order_content: finalItems.join(' ｜ '), total: total, dining_option: finalDiningStyle,
-                note: document.getElementById('order_note').value || "無", orderToken: "NX_" + Date.now(), itemsOrdered: itemsOrderedMap
+                note: document.getElementById('order_note').value.trim() || "無", orderToken: "NX_" + Date.now(), itemsOrdered: itemsOrderedMap
             };
 
             const actionButtons = `
@@ -816,7 +899,6 @@
 
         function executeFinalSubmit() {
             if (!window.pendingOrder || !window.pendingOrder.name || window.pendingOrder.name === "undefined") {
-                console.error("拒絕送出空訂單結構");
                 localStorage.removeItem('nx_space_last_order');
                 closeCustomModal();
                 return;
@@ -833,10 +915,17 @@
             })
             .then(res => res.json())
             .then((result) => {
+                // 🚀 3. 處理唯一序號阻斷機制的引導通知
                 if(result.result === "success") {
-                    localStorage.setItem('nx_space_last_order', JSON.stringify(window.pendingOrder));
-                    alert("🎉 預訂成功！已通知廠商進行備餐作業。");
-                    backToEntrance();
+                    if (result.message === "duplicate blocked") {
+                        openCustomModal("⚠️ 請勿重複下單", "<p class='text-center py-2 text-stone-600 leading-relaxed'>系統偵測到此訂單已被安全紀錄，請勿連按或重複填寫！可至首頁下方查看最新預訂紀錄。</p>", `<button onclick="backToEntrance()" class="px-5 py-2 bg-black text-white font-bold rounded-lg">回首頁查看</button>`);
+                    } else {
+                        localStorage.setItem('nx_space_last_order', JSON.stringify(window.pendingOrder));
+                        // 清除10分鐘緩存，確保下次能加總當日已售份數
+                        localStorage.removeItem('nx_cache_data');
+                        alert("🎉 預訂成功！已通知廠商進行備餐作業。");
+                        backToEntrance();
+                    }
                 } else {
                     alert("儲存失敗：" + result.message);
                     closeCustomModal();
@@ -844,6 +933,7 @@
             }).catch(() => {
                 if (window.pendingOrder && window.pendingOrder.name) {
                     localStorage.setItem('nx_space_last_order', JSON.stringify(window.pendingOrder));
+                    localStorage.removeItem('nx_cache_data');
                     alert("🎉 預訂單已成功送出！已通知廠商進行備餐作業。");
                 }
                 backToEntrance();
