@@ -199,6 +199,10 @@
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
+        
+        // 🚀 核心優化：更換全新快取識別碼 (v2)，直接作廢所有舊手機內殘留的舊快取資料！
+        const CACHE_KEY = 'nx_cache_data_v2';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v2';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
@@ -206,6 +210,10 @@
         let currentVenue = 'oasis';
 
         window.addEventListener('DOMContentLoaded', () => {
+            // 清理掉以前舊版本留下來的髒快取
+            localStorage.removeItem('nx_cache_data');
+            localStorage.removeItem('nx_cache_timestamp');
+
             const ua = navigator.userAgent || navigator.vendor || window.opera;
             const isSocialBrowser = /Line|FBAN|FBAV|Threads/i.test(ua);
 
@@ -214,13 +222,15 @@
                 if (homeLineBanner) homeLineBanner.classList.remove('hidden');
             }
 
+            // 🚀 手機電話防呆自動切分：4碼之後一個減號連貫 (0912-345678)
             const phoneInput = document.getElementById('cust_phone');
             if (phoneInput) {
                 phoneInput.addEventListener('input', (e) => {
                     let num = e.target.value.replace(/\D/g, ''); 
                     if (num.startsWith('09')) {
-                        if (num.length > 4 && num.length <= 8) num = num.slice(0,4) + '-' + num.slice(4);
-                        else if (num.length > 8) num = num.slice(0,4) + '-' + num.slice(4,10);
+                        if (num.length > 4) {
+                            num = num.slice(0, 4) + '-' + num.slice(4, 10);
+                        }
                     } else if (num.startsWith('02') || num.startsWith('04') || num.startsWith('07') || num.startsWith('03') || num.startsWith('05') || num.startsWith('06')) {
                         if (num.length > 2 && num.length <= 6) num = num.slice(0,2) + '-' + num.slice(2);
                         else if (num.length > 6) num = num.slice(0,2) + '-' + num.slice(2,6) + '-' + num.slice(6,10);
@@ -232,8 +242,8 @@
                 });
             }
 
-            const cachedData = localStorage.getItem('nx_cache_data');
-            const cachedTime = localStorage.getItem('nx_cache_timestamp');
+            const cachedData = localStorage.getItem(CACHE_KEY);
+            const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
             const nowTime = Date.now();
 
             if (cachedData && cachedTime && (nowTime - cachedTime < CACHE_DURATION)) {
@@ -244,8 +254,8 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.brands && data.brands.length > 0) {
-                        localStorage.setItem('nx_cache_data', JSON.stringify(data));
-                        localStorage.setItem('nx_cache_timestamp', nowTime.toString());
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                        localStorage.setItem(CACHE_TIME_KEY, nowTime.toString());
                     }
                     initializePageData(data);
                 })
@@ -265,6 +275,11 @@
             if (!data.main_config) data.main_config = {};
             if (!data.brands) data.brands = [];
             if (!data.menus) data.menus = {};
+
+            // 🚀 強制清洗後端帶出來的髒資料：如果大麗士活動文字被埋在試算表 notice 裡，在此強制過濾
+            if (data.main_config.notice_text_oasis) {
+                data.main_config.notice_text_oasis = data.main_config.notice_text_oasis.replace(/🔥 大麗士獨家加碼.*/g, "");
+            }
 
             dbData = data;
             switchVenue('oasis'); 
@@ -290,7 +305,7 @@
 
             lines.forEach(line => {
                 let cleanLine = line.trim();
-                if (cleanLine === "") return;
+                if (cleanLine === "" || cleanLine.indexOf("大麗士獨家加碼") > -1) return; // 雙層屏蔽防禦
 
                 if (cleanLine.indexOf('本週') > -1 || cleanLine.indexOf('預告') > -1 || cleanLine.indexOf('活動') > -1 && cleanLine.indexOf('|') === -1) {
                     currentSection = document.createElement('div');
@@ -355,7 +370,10 @@
 
             const configObj = dbData.main_config || {};
             const title = configObj[`activity_title_${venue}`] || "最新活動資訊";
-            const notice = configObj[`notice_text_${venue}`] || "暫無公告資訊。";
+            let notice = configObj[`notice_text_${venue}`] || "暫無公告資訊。";
+
+            // 三層清洗大麗士加碼
+            notice = notice.replace(/🔥 大麗士獨家加碼.*/g, "");
 
             const annTitleEl = document.getElementById('announcement-title');
             if (annTitleEl) annTitleEl.innerText = "📅 " + title;
@@ -379,7 +397,16 @@
 
             brandsList.forEach((brand) => {
                 if (!brand || !brand.name) return;
-                const fullImgUrl = brand.imgUrl ? (brand.imgUrl.startsWith("http") ? brand.imgUrl : imgBase + brand.imgUrl) : "";
+                
+                // 🚀 特殊字元檔名、空白完全轉義編碼處理
+                let safeImgUrl = "";
+                if (brand.imgUrl) {
+                    if (brand.imgUrl.startsWith("http")) {
+                        safeImgUrl = brand.imgUrl;
+                    } else {
+                        safeImgUrl = imgBase + encodeURIComponent(brand.imgUrl.trim());
+                    }
+                }
                 
                 let extraImageClass = "w-full h-full object-cover rounded-full transition duration-300 group-hover:scale-105";
 
@@ -390,7 +417,7 @@
 
                 btnWrapper.innerHTML = `
                     <div class="brand-avatar-circle w-[84px] h-[84px] rounded-full p-[3px] bg-white border border-gray-200/80 shadow-sm transition duration-300 group-hover:border-gray-900 group-hover:shadow-md overflow-hidden flex items-center justify-center bg-stone-100">
-                        ${fullImgUrl ? `<img src="${fullImgUrl}" class="${extraImageClass}" alt="${brand.name}">` : `<div class="text-xs text-gray-400 font-bold">${brand.name.substring(0,2)}</div>`}
+                        ${safeImgUrl ? `<img src="${safeImgUrl}" class="${extraImageClass}" alt="${brand.name}" onerror="this.onerror=null; this.src=''; this.parentNode.innerHTML='<div class=\"text-[10px] text-gray-400 font-bold\">圖檔</div>';">` : `<div class="text-xs text-gray-400 font-bold">${brand.name.substring(0,2)}</div>`}
                     </div>
                     <span class="brand-name-text text-xs font-bold text-gray-700 mt-2 tracking-wide group-hover:text-black transition">${brand.name}</span>
                     ${brand.subName ? `<span class="text-[10px] text-gray-400 mt-0.5 scale-90 origin-top font-medium">${brand.subName}</span>` : ""}
@@ -544,7 +571,7 @@
 
             const promoBanner = document.getElementById('dynamic-promo-banner');
             
-            // 🚀 徹底移除大麗士活動，統一全網頁乾淨呈現問卷回饋
+            // 🚀 核心防禦：全網頁強制覆寫，百分百消滅大麗士舊加碼文字，只提供乾淨的問卷回饋
             promoBanner.innerHTML = `
                 <div class="bg-amber-50 border-amber-200 text-amber-800 p-2.5 rounded-lg border shadow-xs">
                     🎁 <strong>場地問卷回饋：</strong>填寫問卷並出示即享<strong>折價</strong>優惠！👉 <a href="https://forms.gle/zp2bKyBMKqrpc1fZ9" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline hover:text-blue-800">點此填寫問卷</a>
@@ -739,12 +766,18 @@
                     `;
                 }
 
+                // 🚀 核心轉義編碼：防禦產品圖片包含中文、特殊字元或空白导致的破圖
                 let itemImgHtml = '';
                 if (item.imgUrl) {
-                    let fullImgPath = item.imgUrl.startsWith("http") ? item.imgUrl : imgBase + item.imgUrl;
+                    let fullImgPath = "";
+                    if (item.imgUrl.trim().startsWith("http")) {
+                        fullImgPath = item.imgUrl.trim();
+                    } else {
+                        fullImgPath = imgBase + encodeURIComponent(item.imgUrl.trim());
+                    }
                     itemImgHtml = `
                         <div class="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 mr-3 shadow-sm border border-gray-100">
-                            <img src="${fullImgPath}" class="w-full h-full object-cover" alt="${item.name}">
+                            <img src="${fullImgPath}" class="w-full h-full object-cover" alt="${item.name}" onerror="this.onerror=null; this.parentNode.style.display='none';">
                         </div>
                     `;
                 }
@@ -973,7 +1006,7 @@
                         openCustomModal("⚠️ 請勿重複下單", "<p class='text-center py-2 text-stone-600 leading-relaxed'>系統偵測到此訂單已被安全紀錄，請勿連按或重複填寫！可至首頁下方查看最新預訂紀錄。</p>", `<button onclick="backToEntrance()" class="px-5 py-2 bg-black text-white font-bold rounded-lg">回首頁查看</button>`);
                     } else {
                         localStorage.setItem('nx_space_last_order', JSON.stringify(window.pendingOrder));
-                        localStorage.removeItem('nx_cache_data');
+                        localStorage.removeItem(CACHE_KEY);
                         alert("🎉 預訂成功！已通知廠商進行備餐作業。");
                         backToEntrance();
                     }
@@ -984,7 +1017,7 @@
             }).catch(() => {
                 if (window.pendingOrder && window.pendingOrder.name) {
                     localStorage.setItem('nx_space_last_order', JSON.stringify(window.pendingOrder));
-                    localStorage.removeItem('nx_cache_data');
+                    localStorage.removeItem(CACHE_KEY);
                     alert("🎉 預訂單已成功送出！已通知廠商進行備餐作業。");
                 }
                 backToEntrance();
