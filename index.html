@@ -200,9 +200,9 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        // 🚀 核心快取強制爆破：升級識別碼至 v3，強制清空以前殘留的所有舊資料！
-        const CACHE_KEY = 'nx_cache_data_v3';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v3';
+        // 🚀 核心爆破快取識別碼：變更為 v4，確保推上 GitHub 後立刻強制沖洗掉顧客手機裡的舊快取資料！
+        const CACHE_KEY = 'nx_cache_data_v4';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v4';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
@@ -210,10 +210,13 @@
         let currentVenue = 'oasis';
 
         window.addEventListener('DOMContentLoaded', () => {
+            // 清理舊版本快取殘留
             localStorage.removeItem('nx_cache_data');
             localStorage.removeItem('nx_cache_timestamp');
             localStorage.removeItem('nx_cache_data_v2');
             localStorage.removeItem('nx_cache_timestamp_v2');
+            localStorage.removeItem('nx_cache_data_v3');
+            localStorage.removeItem('nx_cache_timestamp_v3');
 
             const ua = navigator.userAgent || navigator.vendor || window.opera;
             const isSocialBrowser = /Line|FBAN|FBAV|Threads/i.test(ua);
@@ -223,7 +226,6 @@
                 if (homeLineBanner) homeLineBanner.classList.remove('hidden');
             }
 
-            // 🚀 核心格式化防禦：重寫精準切分邏輯，斬斷雙減號舊格式（0912-345678）
             const phoneInput = document.getElementById('cust_phone');
             if (phoneInput) {
                 phoneInput.addEventListener('input', (e) => {
@@ -277,7 +279,7 @@
             if (!data.brands) data.brands = [];
             if (!data.menus) data.menus = {};
 
-            // 🚀 全面清洗防禦：徹底把後端不管藏在哪個角落的「大麗士獨家加碼」文字全部替換拔除
+            // 🚀 快取爆破防禦：全面強力清洗大麗士加碼字眼
             for (let k in data.main_config) {
                 if (typeof data.main_config[k] === 'string') {
                     data.main_config[k] = data.main_config[k].replace(/🔥?\s*大麗士獨家加碼.*/g, "");
@@ -388,7 +390,6 @@
             renderStructuredNotice(notice);
         }
 
-        // 🚀 核心優化：優化解鎖相對路徑與特殊字元（如空白與單引號），保證廠商頭像絕不破圖
         function renderHighDefBrandButtons() {
             const gridContainer = document.getElementById('brandGridContainer');
             if (!gridContainer) return;
@@ -412,7 +413,6 @@
                     if (rawUrl.startsWith("http")) {
                         safeImgUrl = rawUrl;
                     } else {
-                        // 修正拼接方式，確保網址完全解析
                         safeImgUrl = imgBase + rawUrl.split('/').map(p => encodeURIComponent(p)).join('/');
                     }
                 }
@@ -424,7 +424,6 @@
                 btnWrapper.className = "flex flex-col items-center text-center cursor-pointer group transition duration-200 transform active:scale-95";
                 btnWrapper.onclick = () => selectBrandHighDef(brand);
 
-                // 核心防禦 onerror 機制：破圖時自動切換為質感的首兩字文字頭像，防止黑底破片
                 btnWrapper.innerHTML = `
                     <div class="brand-avatar-circle w-[84px] h-[84px] rounded-full p-[3px] bg-white border border-gray-200/80 shadow-sm transition duration-300 group-hover:border-gray-900 group-hover:shadow-md overflow-hidden flex items-center justify-center bg-stone-100">
                         ${safeImgUrl ? `<img src="${safeImgUrl}" class="${extraImageClass}" alt="${brand.name}" onerror="this.onerror=null; this.src=''; this.parentNode.innerHTML='<div class=\"text-xs text-stone-500 font-extrabold tracking-wide\">${brand.name.substring(0,2)}</div>';">` : `<div class="text-xs text-gray-400 font-bold">${brand.name.substring(0,2)}</div>`}
@@ -581,7 +580,6 @@
 
             const promoBanner = document.getElementById('dynamic-promo-banner');
             
-            // 🚀 核心防禦：全網頁強制覆寫，百分百消滅大麗士舊加碼文字，只提供乾淨的問卷回饋
             promoBanner.innerHTML = `
                 <div class="bg-amber-50 border-amber-200 text-amber-800 p-2.5 rounded-lg border shadow-xs">
                     🎁 <strong>場地問卷回饋：</strong>填寫問卷並出示即享<strong>折價</strong>優惠！👉 <a href="https://forms.gle/zp2bKyBMKqrpc1fZ9" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline hover:text-blue-800">點此填寫問卷</a>
@@ -735,7 +733,6 @@
             }
         }
 
-        // 🚀 核心優化：優化產品圖片的轉義解析與解鎖相對路徑，徹底根治破圖
         function renderMenuList() {
             const menuContainer = document.getElementById('menu_list_container');
             menuContainer.innerHTML = "";
@@ -777,7 +774,6 @@
                     `;
                 }
 
-                // 核心防禦：中文與特殊符號圖片解鎖路徑
                 let itemImgHtml = '';
                 if (item.imgUrl) {
                     let fullImgPath = "";
@@ -858,7 +854,7 @@
             const item = brandMenu[index];
 
             if (qty > 0) {
-                box.remove('hidden');
+                // 🚀 修正點：移除舊有錯誤的 box.remove('hidden')，正確使用 classList 控制容器開啟
                 box.classList.remove('hidden');
                 
                 if (item && item.name.indexOf("兩種抹醬") > -1) {
