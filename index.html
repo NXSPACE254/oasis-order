@@ -131,7 +131,6 @@
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-1">聯絡電話</label>
-                            <!-- 🚀 修正點：格式更動為 0912-345678 -->
                             <input type="tel" id="cust_phone" required placeholder="例如: 0912-345678 或 089-345678" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white/80">
                         </div>
                         <div>
@@ -204,6 +203,7 @@
 
         let dbData = { main_config: {}, brands: [], menus: {} };
         let selectedBrand = null;
+        let currentVenue = 'oasis';
 
         window.addEventListener('DOMContentLoaded', () => {
             const ua = navigator.userAgent || navigator.vendor || window.opera;
@@ -474,9 +474,8 @@
                     totalQty += qty;
                     let sum = item.price * qty;
                     
-                    // 特殊處理兩種抹醬組
                     if (item.name.indexOf("兩種抹醬") > -1) {
-                        // 抹醬不加價，不需額外加成總金額
+                        // 抹醬不加價
                     } else if (item.options) {
                         item.options.split(",").forEach((rawOpt, optIdx) => {
                             const cb = document.querySelector(`input[name="opt_${idx}_${optIdx}"]`);
@@ -545,10 +544,10 @@
 
             const promoBanner = document.getElementById('dynamic-promo-banner');
             
-            // 🚀 1. 完全移除大麗士的過期加碼活動，統一保留問卷回饋
+            // 🚀 徹底移除大麗士活動，統一全網頁乾淨呈現問卷回饋
             promoBanner.innerHTML = `
                 <div class="bg-amber-50 border-amber-200 text-amber-800 p-2.5 rounded-lg border shadow-xs">
-                    🎁 <strong>場地問券回饋：</strong>填寫問券並出示即享<strong>折價</strong>優惠！👉 <a href="https://forms.gle/zp2bKyBMKqrpc1fZ9" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline hover:text-blue-800">點此填寫問券</a>
+                    🎁 <strong>場地問卷回饋：</strong>填寫問卷並出示即享<strong>折價</strong>優惠！👉 <a href="https://forms.gle/zp2bKyBMKqrpc1fZ9" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline hover:text-blue-800">點此填寫問卷</a>
                 </div>
             `;
             promoBanner.classList.remove('hidden');
@@ -699,7 +698,6 @@
             }
         }
 
-        // 🚀 核心優化點：動態配組抹醬選單引擎
         function renderMenuList() {
             const menuContainer = document.getElementById('menu_list_container');
             menuContainer.innerHTML = "";
@@ -707,7 +705,7 @@
             const configObj = dbData.main_config || {};
             const imgBase = configObj.github_img_base || "";
             const browseBanner = document.getElementById('browse-only-banner');
-            const isBrowseOnlyMode = browseBanner.classList.contains('hidden') ? false : true;
+            const isBrowseOnlyMode = !browseBanner.classList.contains('hidden');
 
             brandMenu.forEach((item, index) => {
                 let itemDiv = document.createElement('div');
@@ -731,7 +729,7 @@
                     let maxSelectable = Math.min(3, remainingAvailable); 
                     let optionsHtml = '<option value="0">0</option>';
                     for (let s = 1; s <= maxSelectable; s++) {
-                        optionsHtml += `<option value="${s}">${s}</option>';
+                        optionsHtml += `<option value="${s}">${s}</option>`;
                     }
                     
                     selectSelectorHtml = `
@@ -764,7 +762,6 @@
                     </div>
                 `;
                 
-                // 🚀 如果是「兩種抹醬」品項，改為獨立下拉組選單結構
                 if (item.name.indexOf("兩種抹醬") > -1 && !isBrowseOnlyMode && remainingAvailable > 0) {
                     let optDiv = document.createElement('div');
                     optDiv.id = `opt_box_${index}`;
@@ -778,7 +775,6 @@
                     return;
                 }
                 
-                // 標準一般選項
                 if (item.options && !isBrowseOnlyMode && remainingAvailable > 0) {
                     let optDiv = document.createElement('div');
                     optDiv.id = `opt_box_${index}`;
@@ -809,7 +805,6 @@
             });
         }
 
-        // 🚀 控制配組抹醬與一般客製化容器切換
         function toggleOptionsBox(index, value) {
             const box = document.getElementById(`opt_box_${index}`);
             if (!box) return;
@@ -820,7 +815,6 @@
             if (qty > 0) {
                 box.classList.remove('hidden');
                 
-                // 針對抹醬品項實作一鍵配組生動卡片
                 if (item && item.name.indexOf("兩種抹醬") > -1) {
                     box.innerHTML = `<p class="font-bold text-stone-700 mb-1.5">🧁 請為您預訂的 ${qty} 份抹醬挑選口味：</p>`;
                     const optsArray = item.options ? item.options.split(",") : [];
@@ -869,7 +863,6 @@
             let finalItems = []; let total = 0; let itemsOrderedMap = {};
             const brandMenu = dbData.menus ? (dbData.menus[selectedBrand.id] || []) : [];
 
-            // 驗證並格式化內容明細
             for (let index = 0; index < brandMenu.length; index++) {
                 const item = brandMenu[index];
                 const qtySelect = document.querySelector(`select[name="qty_${index}"]`);
@@ -880,7 +873,6 @@
                     let desc = `${item.name} x ${qty}`; 
                     let sum = item.price * qty;
 
-                    // 處理兩種抹醬
                     if (item.name.indexOf("兩種抹醬") > -1) {
                         let jamDetails = [];
                         for (let f = 1; f <= qty; f++) {
