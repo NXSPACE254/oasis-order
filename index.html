@@ -99,7 +99,7 @@
                 </div>
 
                 <div class="mt-6 p-4 bg-white/90 backdrop-blur-md rounded-xl border border-stone-200 shadow-md text-center">
-                    <p class="text-xs font-bold text-stone-800 mb-2 tracking-wide">🤝 歡迎品牌 ｜活動展覽｜餐車｜策展活動合作</p>
+                    <p class="text-xs font-bold text-stone-800 mb-2 tracking-wide">🤝 歡迎 brand ｜活動展覽｜餐車｜策展活動合作</p>
                     <div class="flex justify-center space-x-3 text-xs">
                         <a href="https://lin.ee/VAwAg1I" target="_blank" rel="noopener noreferrer" class="px-4 py-1.5 bg-[#06C755] text-white rounded-full font-medium shadow-sm flex items-center">LINE 客服</a>
                         <a href="https://www.facebook.com/nxspace254" target="_blank" rel="noopener noreferrer" class="px-4 py-1.5 bg-[#1877F2] text-white rounded-full font-medium shadow-sm flex items-center">臉書專頁</a>
@@ -200,9 +200,9 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        // 🚀 快取強制刷新識別碼升級至 v5，全自動清除手機過期記憶
-        const CACHE_KEY = 'nx_cache_data_v5';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v5';
+        // 🚀 快取強制刷新識別碼升級至 v6，徹底沖洗乾淨
+        const CACHE_KEY = 'nx_cache_data_v6';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v6';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
@@ -210,14 +210,7 @@
         let currentVenue = 'oasis';
 
         window.addEventListener('DOMContentLoaded', () => {
-            localStorage.removeItem('nx_cache_data');
-            localStorage.removeItem('nx_cache_timestamp');
-            localStorage.removeItem('nx_cache_data_v2');
-            localStorage.removeItem('nx_cache_timestamp_v2');
-            localStorage.removeItem('nx_cache_data_v3');
-            localStorage.removeItem('nx_cache_timestamp_v3');
-            localStorage.removeItem('nx_cache_data_v4');
-            localStorage.removeItem('nx_cache_timestamp_v4');
+            localStorage.clear(); // 徹底沖刷乾淨
 
             const ua = navigator.userAgent || navigator.vendor || window.opera;
             const isSocialBrowser = /Line|FBAN|FBAV|Threads/i.test(ua);
@@ -251,7 +244,6 @@
             const nowTime = Date.now();
 
             if (cachedData && cachedTime && (nowTime - cachedTime < CACHE_DURATION)) {
-                console.log("⚡ 讀取10分鐘本機快取緩存機制生效");
                 initializePageData(JSON.parse(cachedData));
             } else {
                 fetch(GAS_URL)
@@ -280,17 +272,7 @@
             if (!data.brands) data.brands = [];
             if (!data.menus) data.menus = {};
 
-            for (let k in data.main_config) {
-                if (typeof data.main_config[k] === 'string') {
-                    data.main_config[k] = data.main_config[k].replace(/🔥?\s*大麗士獨家加碼.*/g, "");
-                }
-            }
-            if (data.brands && data.brands.length > 0) {
-                data.brands.forEach(b => {
-                    if (b.desc) b.desc = b.desc.replace(/🔥?\s*大麗士獨家加碼.*/g, "");
-                });
-            }
-
+            // 🚀 改良點：不使用高風險字串取代，直接在前端呈現時過濾文字，確保 100% 不破壞引號結構
             dbData = data;
             switchVenue('oasis'); 
             renderHighDefBrandButtons();
@@ -300,22 +282,28 @@
             checkOrderHistory();
         }
 
+        function cleanDataText(text) {
+            if (!text) return "";
+            return text.replace(/🔥?\s*大麗士獨家加碼.*/g, "").trim();
+        }
+
         function renderStructuredNotice(rawText) {
             const container = document.getElementById('dynamic-announcement-box');
             if (!container) return;
             container.innerHTML = "";
 
-            if (!rawText || rawText.trim() === "") {
+            let cleanNotice = cleanDataText(rawText);
+            if (!cleanNotice || cleanNotice === "") {
                 container.innerHTML = `<p class="text-stone-400 text-center py-2">暫無公告資訊。</p>`;
                 return;
             }
 
-            const lines = rawText.split('\n');
+            const lines = cleanNotice.split('\n');
             let currentSection = null;
 
             lines.forEach(line => {
                 let cleanLine = line.trim();
-                if (cleanLine === "" || cleanLine.indexOf("大麗士獨家加碼") > -1) return;
+                if (cleanLine === "") return;
 
                 if (cleanLine.indexOf('本週') > -1 || cleanLine.indexOf('預告') > -1 || cleanLine.indexOf('活動') > -1 && cleanLine.indexOf('|') === -1) {
                     currentSection = document.createElement('div');
@@ -381,16 +369,14 @@
             const configObj = dbData.main_config || {};
             const title = configObj[`activity_title_${venue}`] || "最新活動資訊";
             let notice = configObj[`notice_text_${venue}`] || "暫無公告資訊。";
-
-            notice = notice.replace(/🔥?\s*大麗士獨家加碼.*/g, "");
-
+            
             const annTitleEl = document.getElementById('announcement-title');
             if (annTitleEl) annTitleEl.innerText = "📅 " + title;
             
             renderStructuredNotice(notice);
         }
 
-        // 🚀 修正點：重寫乾淨無瑕的 Logo 渲染器，精準修復被擠歪、偏掉的排版
+        // 🚀 一鍵根治：純淨置中 Logo 排版，杜絕一切外部引號干擾
         function renderHighDefBrandButtons() {
             const gridContainer = document.getElementById('brandGridContainer');
             if (!gridContainer) return;
@@ -425,7 +411,6 @@
                 btnWrapper.className = "flex flex-col items-center text-center cursor-pointer group transition duration-200 transform active:scale-95";
                 btnWrapper.onclick = () => selectBrandHighDef(brand);
 
-                // 🚀 修復：完全拔除導致破殼與偏掉的 onerror 字串殘留碼
                 btnWrapper.innerHTML = `
                     <div class="brand-avatar-circle w-[84px] h-[84px] rounded-full p-[3px] bg-white border border-gray-200/80 shadow-sm transition duration-300 group-hover:border-gray-900 group-hover:shadow-md overflow-hidden flex items-center justify-center bg-stone-100">
                         ${safeImgUrl ? `<img src="${safeImgUrl}" class="${extraImageClass}" alt="${brand.name}" onerror="this.onerror=null; this.style.display='none'; this.parentNode.innerHTML='<div class=\'text-xs text-stone-500 font-extrabold tracking-wide\'>${brand.name.substring(0,2)}</div>';">` : `<div class="text-xs text-gray-400 font-bold">${brand.name.substring(0,2)}</div>`}
@@ -461,7 +446,7 @@
         function showBrandCard(brand) {
             document.getElementById('brand-card').classList.remove('hidden');
             document.getElementById('card-title').innerText = brand.name + " " + (brand.subName || "");
-            document.getElementById('card-desc').innerText = brand.desc || "暫無介紹";
+            document.getElementById('card-desc').innerText = cleanDataText(brand.desc) || "暫無介紹";
             
             const fbLink = document.getElementById('link-fb');
             const igLink = document.getElementById('link-ig');
@@ -513,7 +498,7 @@
                     let sum = item.price * qty;
                     
                     if (item.name.indexOf("兩種抹醬") > -1) {
-                        // 抹醬不計客製化加價
+                        // 抹醬不計客製化價
                     } else if (item.options) {
                         item.options.split(",").forEach((rawOpt, optIdx) => {
                             const cb = document.querySelector(`input[name="opt_${idx}_${optIdx}"]`);
@@ -735,7 +720,6 @@
             }
         }
 
-        // 🚀 修正點：重新優化產品圖片解析開關，破圖時只隱藏邊框，百分百防止隱藏整筆商品
         function renderMenuList() {
             const menuContainer = document.getElementById('menu_list_container');
             menuContainer.innerHTML = "";
@@ -786,7 +770,6 @@
                     } else {
                         fullImgPath = imgBase + rawItemUrl.split('/').map(p => encodeURIComponent(p)).join('/');
                     }
-                    // 🚀 修復：onerror 時只隱藏圖片框，絕對不使用 parentNode 隱藏整個商品欄位
                     itemImgHtml = `
                         <div class="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 mr-3 shadow-sm border border-gray-100 flex items-center justify-center">
                             <img src="${fullImgPath}" class="w-full h-full object-cover" alt="${item.name}" onerror="this.onerror=null; this.style.display='none';">
@@ -850,6 +833,7 @@
             });
         }
 
+        // 🚀 核心優化點：建構「同份即時動態阻斷防重複」引擎
         function toggleOptionsBox(index, value) {
             const box = document.getElementById(`opt_box_${index}`);
             if (!box) return;
@@ -861,7 +845,7 @@
                 box.classList.remove('hidden');
                 
                 if (item && item.name.indexOf("兩種抹醬") > -1) {
-                    box.innerHTML = `<p class="font-bold text-stone-700 mb-1.5">🧁 請為您預訂的 ${qty} 份抹醬挑選口味：</p>`;
+                    box.innerHTML = `<p class="font-bold text-stone-700 mb-1.5">🧁 請為您預訂的 ${qty} 份抹醬挑選口味（每份不可重疊）：</p>`;
                     const optsArray = item.options ? item.options.split(",") : [];
                     
                     for (let f = 1; f <= qty; f++) {
@@ -871,14 +855,15 @@
                         optsArray.forEach(opt => {
                             let cleanOpt = opt.split("+")[0].trim();
                             selectAoptions += `<option value="${cleanOpt}">${cleanOpt}</option>`;
-                            selectBoptions += `<option value="${cleanOpt}">${cleanOpt}</option>`;
+                            selectBoptions += `<option value="${cleanOpt}" data-flavor="${cleanOpt}">${cleanOpt}</option>`;
                         });
 
+                        // 🚀 注入即時互斥連動事件：選定 A 欄位時，自動阻斷 B 欄位中完全一樣的口味選項
                         box.innerHTML += `
                             <div class="bg-white p-2 rounded-lg border border-stone-200 shadow-3xs space-y-2 mb-2">
                                 <div class="font-extrabold text-stone-600 text-[11px]">第 ${f} 份：</div>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <select id="jam_a_${index}_${f}" required class="border border-stone-300 rounded p-1.5 bg-white font-medium focus:ring-1 focus:ring-black w-full text-[11px]">
+                                    <select id="jam_a_${index}_${f}" onchange="syncJamExclusion(${index}, ${f})" required class="border border-stone-300 rounded p-1.5 bg-white font-medium focus:ring-1 focus:ring-black w-full text-[11px]">
                                         ${selectAoptions}
                                     </select>
                                     <select id="jam_b_${index}_${f}" required class="border border-stone-300 rounded p-1.5 bg-white font-medium focus:ring-1 focus:ring-black w-full text-[11px]">
@@ -893,6 +878,31 @@
                 box.classList.add('hidden');
                 box.innerHTML = "";
             }
+        }
+
+        // 🚀 核心阻斷防禦函式：執行針對單一份抹醬的口味查禁，互不干涉
+        function syncJamExclusion(itemIndex, setIndex) {
+            const selectA = document.getElementById(`jam_a_${itemIndex}_${setIndex}`);
+            const selectB = document.getElementById(`jam_b_${itemIndex}_${setIndex}`);
+            if (!selectA || !selectB) return;
+
+            const selectedValueA = selectA.value;
+            
+            // 如果 B 當前選的值跟 A 剛選的一樣，強制把 B 重置成未選狀態
+            if (selectB.value === selectedValueA) {
+                selectB.value = "";
+            }
+
+            // 遍歷 B 選單的所有選項，把跟 A 相同的口味鎖定
+            Array.from(selectB.options).forEach(opt => {
+                if (opt.getAttribute('data-flavor') === selectedValueA) {
+                    opt.disabled = true;
+                    opt.style.color = '#d1d5db'; // 灰色標示
+                } else {
+                    opt.disabled = false;
+                    opt.style.color = '';
+                }
+            });
         }
 
         document.getElementById('menuForm').addEventListener('submit', function(e) {
@@ -925,6 +935,10 @@
                             const valB = document.getElementById(`jam_b_${index}_${f}`).value;
                             if (!valA || !valB) {
                                 alert(`❌ 請為第 ${f} 份兩種抹醬完整選擇兩個口味！`);
+                                return;
+                            }
+                            if (valA === valB) {
+                                alert(`❌ 第 ${f} 份兩種抹醬不可重複選擇相同的口味【${valA}】！`);
                                 return;
                             }
                             jamDetails.push(`組${f}:[${valA}+${valB}]`);
