@@ -210,7 +210,12 @@
         let isInternalBackCall = false; 
 
         window.addEventListener('DOMContentLoaded', () => {
-            localStorage.clear(); 
+            // 優化優勢：精準提取上一次填單成功的客戶資訊，不再無腦全盤清空
+            const savedName = localStorage.getItem('nx_cust_name');
+            const savedPhone = localStorage.getItem('nx_cust_phone');
+
+            if (savedName) document.getElementById('cust_name').value = savedName;
+            if (savedPhone) document.getElementById('cust_phone').value = savedPhone;
 
             const ua = navigator.userAgent || navigator.vendor || window.opera;
             const isSocialBrowser = /Line|FBAN|FBAV|Threads/i.test(ua);
@@ -388,9 +393,10 @@
             if (thisWeekItems.length > 0) {
                 const thisWeekBlock = document.createElement('div');
                 thisWeekBlock.className = "space-y-1.5";
+                // 調整點 3：原為「本週活動檔期」，精簡優化為「本週活動」
                 thisWeekBlock.innerHTML = `
                     <h4 class="text-[10px] font-bold text-emerald-600 tracking-wider mb-1.5 border-b border-emerald-100 pb-0.5 uppercase flex items-center">
-                        <span class="mr-1">🔥</span> 本週活動檔期
+                        <span class="mr-1">🔥</span> 本週活動
                     </h4>
                     ${thisWeekItems.join('')}
                 `;
@@ -400,9 +406,10 @@
             if (futureItems.length > 0) {
                 const futureBlock = document.createElement('div');
                 futureBlock.className = "space-y-1.5 mt-4";
+                // 調整點 3：原為「策展活動預告」，精簡優化為「活動預告」
                 futureBlock.innerHTML = `
                     <h4 class="text-[10px] font-bold text-stone-400 tracking-wider mb-1.5 border-b border-stone-200/60 pb-0.5 uppercase flex items-center">
-                        <span class="mr-1">📅</span> 策展活動預告
+                        <span class="mr-1">📅</span> 活動預告
                     </h4>
                     ${futureItems.join('')}
                 `;
@@ -541,6 +548,7 @@
             closeCustomModal();
         }
 
+        // 核心修正監聽器：精準清洗截止時間，排除 1899 日期畸變
         document.getElementById('go-order-btn').addEventListener('click', function() {
             if (!selectedBrand) return;
             
@@ -560,6 +568,7 @@
             `;
             promoBanner.classList.remove('hidden');
             
+            // 調整點 2：在生成下方黃色區塊提示文字前，先用專屬函數提煉時間，排除 1899-12-30 畸變
             let configCutoff = parseToTimeString(selectedBrand.cutoffTime);
             
             document.getElementById('cutoff-notice-msg').innerHTML = `
@@ -653,6 +662,7 @@
             updateStickyCartCalculation(); 
         });
 
+        // 核心修正函數：徹底解決取餐時間下拉選單被 1899 綁架的轉型 Bug
         function checkSelectedDateCutoff() {
             const dateSelect = document.getElementById('pickup_date');
             const timeSelect = document.getElementById('pickup_time');
@@ -675,6 +685,7 @@
                 timeSelect.disabled = false;
                 timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black";
                 
+                // 調整點 2：在此處同樣使用 parseToTimeString 提煉 startTime 與 endTime，保證不帶有 1899 髒年份數據
                 let startStr = parseToTimeString(selectedBrand.startTime);
                 let endStr = parseToTimeString(selectedBrand.endTime);
                 let intervalMin = parseInt(selectedBrand.timeInterval) || 30;
@@ -989,12 +1000,17 @@
             openCustomModal("📋 請確認您的預訂內容", confirmBody, actionButtons);
         });
 
+        // 核心優化監聽器：當預訂成功後，將客戶常規姓名電話儲存至本地快取
         function executeFinalSubmit() {
             if (!window.pendingOrder || !window.pendingOrder.name || window.pendingOrder.name === "undefined") {
                 localStorage.removeItem('nx_space_last_order');
                 closeCustomModal();
                 return;
             }
+
+            // 調整點 1：下單成功時，將姓名、電話記錄下來，下次進網頁時免手動重複輸入，提升老客回購率
+            localStorage.setItem('nx_cust_name', window.pendingOrder.name);
+            localStorage.setItem('nx_cust_phone', window.pendingOrder.phone);
 
             openCustomModal("⏳ 訂單傳送中", "<p class='text-center py-4 text-stone-500 font-medium animate-pulse'>正在紀錄您的餐點資訊，請勿關閉網頁...</p>", "");
 
@@ -1046,6 +1062,7 @@
             document.getElementById('custom-modal').classList.add('hidden');
         }
 
+        // 修改點 1：清除紀錄時，只清空該筆預訂單狀態，完美保護手機上儲存的客戶姓名與電話
         function triggerClearHistoryAlert() {
             const bodyContent = `
                 <p class="font-extrabold text-red-600 text-sm bg-red-50 p-2.5 rounded-lg border border-red-100 text-center">
@@ -1094,7 +1111,7 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
-        // 🚀 核心優化改動：重新改寫 parseToTimeString，徹底解決 Excel 初始日期「1899」造成的時間轉型錯誤
+        // 🚀 核心重寫基礎：徹底提煉並過濾 Excel 後端各種初始日期年份「1899」造成的時間錯誤，高商用級容錯
         function parseToTimeString(excelTimeStr) {
             if (!excelTimeStr) return "13:00";
             let s = String(excelTimeStr).trim();
