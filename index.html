@@ -276,7 +276,6 @@
             });
         });
 
-        // 🚀 修正點：補齊解鎖畫面的關閉機制，防止轉圈圈動畫阻擋
         function initializePageData(data) {
             if (!data || typeof data !== 'object') data = { main_config: {}, brands: [], menus: {} };
             if (!data.main_config) data.main_config = {};
@@ -287,7 +286,6 @@
             switchVenue('oasis'); 
             renderHighDefBrandButtons();
 
-            // 補上將轉圈圈隱藏並開啟大區塊的防禦線
             removeLoadingSpinner();
             document.getElementById('main-content').classList.remove('hidden');
             checkOrderHistory();
@@ -927,7 +925,7 @@
                     } else if (item.options) {
                         let opts = [];
                         item.options.split(",").forEach((rawOpt, optIdx) => {
-                            const cb = document.querySelector(`input[name="opt_${idx}_${optIdx}"]`);
+                            const cb = document.querySelector(`input[name="opt_${index}_${optIdx}"]`);
                             if (cb && cb.checked) {
                                 let price = parseInt(cb.getAttribute('data-price')) || 0;
                                 opts.push(cb.value); sum += (price * qty);
@@ -1087,11 +1085,72 @@
             }
         }
         
+        // 🚀 核心補齊輔助功能 A：日期轉換字串
         function formatDateString(dObj) {
             let yyyy = dObj.getFullYear();
             let mm = String(dObj.getMonth() + 1).padStart(2, '0');
             let dd = String(dObj.getDate()).padStart(2, '0');
             return `${yyyy}-${mm}-${dd}`;
+        }
+
+        // 🚀 核心補齊輔助功能 B：處理 Excel 載入的時間字串
+        function parseToTimeString(excelTimeStr) {
+            if (!excelTimeStr) return "13:00";
+            let s = String(excelTimeStr).trim();
+            if (s.indexOf(":") > -1) {
+                let p = s.split(":");
+                return `${p[0].padStart(2,'0')}:${p[1].padStart(2,'0')}`;
+            }
+            if (s.startsWith("0.") || s === "0" || parseFloat(s) < 1) {
+                let totalMin = Math.round(parseFloat(s) * 1440);
+                let h = Math.floor(totalMin / 60);
+                let m = totalMin % 60;
+                return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+            }
+            return s;
+        }
+
+        // 🚀 核心補齊輔助功能 C：購物車實時計算與浮動條動態顯示
+        function updateStickyCartCalculation() {
+            if (!selectedBrand) return;
+            const brandMenu = dbData.menus ? (dbData.menus[selectedBrand.id] || []) : [];
+            let totalQty = 0;
+            let totalPrice = 0;
+
+            brandMenu.forEach((item, index) => {
+                const qtySelect = document.querySelector(`select[name="qty_${index}"]`);
+                if (qtySelect) {
+                    let qty = parseInt(qtySelect.value) || 0;
+                    if (qty > 0) {
+                        totalQty += qty;
+                        totalPrice += item.price * qty;
+
+                        if (item.options) {
+                            item.options.split(",").forEach((_, optIdx) => {
+                                const cb = document.querySelector(`input[name="opt_${index}_${optIdx}"]`);
+                                if (cb && cb.checked) {
+                                    let optPrice = parseInt(cb.getAttribute('data-price')) || 0;
+                                    totalPrice += optPrice * qty;
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+
+            const cartBar = document.getElementById('sticky-cart-bar');
+            if (totalQty > 0) {
+                cartBar.classList.remove('hidden');
+                document.getElementById('cart-qty').innerText = totalQty;
+                document.getElementById('cart-total-price').innerText = `$${totalPrice}`;
+            } else {
+                cartBar.classList.add('hidden');
+            }
+        }
+
+        function scrollToSubmitForm() {
+            const target = document.getElementById('cust_name');
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     </script>
 </body>
