@@ -200,14 +200,15 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        // 🚀 快取強制刷新識別碼升級至 v7
-        const CACHE_KEY = 'nx_cache_data_v7';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v7';
+        // 🚀 快取強制刷新識別碼升級至 v8
+        const CACHE_KEY = 'nx_cache_data_v8';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v8';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
         let selectedBrand = null;
         let currentVenue = 'oasis';
+        let isInternalBackCall = false; // 🚀 用於標記是否為內部點擊返回，避免二次觸發歷史紀錄異常
 
         window.addEventListener('DOMContentLoaded', () => {
             localStorage.clear(); 
@@ -264,6 +265,18 @@
                     }
                 });
             }
+
+            // 🚀 核心路由監聽防禦：監聽手機上的實體返回鍵 (popstate)
+            window.addEventListener('popstate', (e) => {
+                const orderStage = document.getElementById('order-stage');
+                // 如果點餐畫面目前是開啟的，代表顧客按了手機返回鍵
+                if (orderStage && !orderStage.classList.contains('hidden')) {
+                    if (!isInternalBackCall) {
+                        executeBackToEntranceUI(); // 只縮回主畫面，不跳出網頁
+                    }
+                }
+                isInternalBackCall = false; // 重置狀態
+            });
         });
 
         function initializePageData(data) {
@@ -468,7 +481,18 @@
             document.getElementById('announce-content').classList.toggle('hidden');
         }
 
+        // 🚀 頂層返回主畫面中樞
         function backToEntrance() {
+            isInternalBackCall = true;
+            // 顧客如果點擊畫面上的「← 返回品牌選擇」，主動把剛才寫進歷史紀錄的虛擬節點洗掉（退回一步）
+            if (window.location.hash === "#order") {
+                window.history.back();
+            }
+            executeBackToEntranceUI();
+        }
+
+        // 🚀 純粹的網頁 UI 切換縮回首頁
+        function executeBackToEntranceUI() {
             document.getElementById('venue-tabs-container').classList.remove('hidden');
             document.getElementById('order-stage').classList.add('hidden');
             document.getElementById('entrance-stage').classList.remove('hidden');
@@ -476,88 +500,12 @@
             closeCustomModal();
         }
 
-        function scrollToSubmitForm() {
-            document.getElementById('customer-info-fields').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function updateStickyCartCalculation() {
-            const qtySelects = document.querySelectorAll('select[name^="qty_"]');
-            let totalQty = 0;
-            let totalPrice = 0;
-            const brandMenu = dbData.menus[selectedBrand.id] || [];
-
-            qtySelects.forEach((select) => {
-                const idx = parseInt(select.name.split('_')[1]);
-                const qty = parseInt(select.value) || 0;
-                const item = brandMenu[idx];
-                
-                if (qty > 0 && item) {
-                    totalQty += qty;
-                    let sum = item.price * qty;
-                    
-                    if (item.name.indexOf("兩種抹醬") > -1) {
-                        // 抹醬不計客製化價
-                    } else if (item.options) {
-                        item.options.split(",").forEach((rawOpt, optIdx) => {
-                            const cb = document.querySelector(`input[name="opt_${idx}_${optIdx}"]`);
-                            if (cb && cb.checked) {
-                                let price = parseInt(cb.getAttribute('data-price')) || 0;
-                                sum += (price * qty);
-                            }
-                        });
-                    }
-                    totalPrice += sum;
-                }
-            });
-
-            const cartBar = document.getElementById('sticky-cart-bar');
-            if (totalQty > 0 && !document.getElementById('order-stage').classList.contains('hidden')) {
-                document.getElementById('cart-qty').innerText = totalQty;
-                document.getElementById('cart-total-price').innerText = `$${totalPrice}`;
-                cartBar.classList.remove('hidden');
-            } else {
-                cartBar.classList.add('hidden');
-            }
-        }
-
-        function formatDateString(dObj) {
-            let yyyy = dObj.getFullYear();
-            let mm = String(dObj.getMonth() + 1).padStart(2, '0');
-            let dd = String(dObj.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
-        }
-
-        function parseToTimeString(timeInput) {
-            const defaultStr = "13:00";
-            if (!timeInput) return defaultStr;
-            const str = String(timeInput).trim();
-            
-            try {
-                const parsedDate = new Date(str);
-                if (!isNaN(parsedDate.getTime())) {
-                    let h = String(parsedDate.getHours()).padStart(2, '0');
-                    let m = String(parsedDate.getMinutes()).padStart(2, '0');
-                    return `${h}:${m}`;
-                }
-            } catch(e) {}
-            
-            if (str.indexOf(":") > -1) {
-                const parts = str.split(":");
-                let hourPart = parts[0].match(/\d+$/); 
-                let minPart = parts[1].match(/^\d+/);  
-                
-                if (hourPart && minPart) {
-                    let h = String(parseInt(hourPart[0], 10) || 0).padStart(2, '0');
-                    let m = String(parseInt(minPart[0], 10) || 0).padStart(2, '0');
-                    return `${h}:${m}`;
-                }
-            }
-            return defaultStr;
-        }
-
         document.getElementById('go-order-btn').addEventListener('click', function() {
             if (!selectedBrand) return;
             
+            // 🚀 核心防禦：顧客點進點餐介面時，往歷史紀錄塞入一個不影響網頁刷新的虛擬錨點「#order」
+            window.history.pushState({ page: "order" }, "", "#order");
+
             document.getElementById('venue-tabs-container').classList.add('hidden');
             document.getElementById('entrance-stage').classList.add('hidden');
             document.getElementById('order-stage').classList.remove('hidden');
@@ -746,7 +694,6 @@
                     priceLabelHtml = `<span class="text-xs text-red-600 font-bold block">⚠️ 該品項已超過當日供餐上限</span>`;
                     selectSelectorHtml = `<span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">完售</span>`;
                 } else {
-                    // 🚀 改良點：自動彈性上限。抓取試算表剩餘庫存量，最高限制不超過常理限制（預設 10 份安全閥門，可自行修改限制數）
                     let maxSelectable = Math.min(10, remainingAvailable); 
                     let optionsHtml = '<option value="0">0</option>';
                     for (let s = 1; s <= maxSelectable; s++) {
@@ -769,7 +716,6 @@
                     } else {
                         fullImgPath = imgBase + rawItemUrl.split('/').map(p => encodeURIComponent(p)).join('/');
                     }
-                    // 🚀 修正：破圖時只隱藏內部 Image 物件，保留灰色背景框架，不破壞左右排版平衡
                     itemImgHtml = `
                         <div class="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 mr-3 shadow-sm border border-gray-100/70 flex items-center justify-center">
                             <img src="${fullImgPath}" class="w-full h-full object-cover" alt="${item.name}" onerror="this.onerror=null; this.style.display='none';">
@@ -904,7 +850,7 @@
             
             const dateSelect = document.getElementById('pickup_date');
             const selectedOpt = dateSelect.options[dateSelect.selectedIndex];
-            if (selectedOpt.getAttribute('data-expired') === 'true') {
+            if (selectedOpt.getAttribute('data-expired'] === 'true') {
                 alert("抱歉，您選擇的日期已經超過該店家的最晚下單時間，無法送出訂單！");
                 return;
             }
@@ -941,7 +887,7 @@
                     } else if (item.options) {
                         let opts = [];
                         item.options.split(",").forEach((rawOpt, optIdx) => {
-                            const cb = document.querySelector(`input[name="opt_${index}_${optIdx}"]`);
+                            const cb = document.querySelector(`input[name="opt_${idx}_${optIdx}"]`);
                             if (cb && cb.checked) {
                                 let price = parseInt(cb.getAttribute('data-price')) || 0;
                                 opts.push(cb.value); sum += (price * qty);
