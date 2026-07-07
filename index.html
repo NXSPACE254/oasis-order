@@ -331,9 +331,11 @@
                     const datePart = parts[0].trim(); 
                     const contentPart = parts[1].trim();
 
+                    let shortDate = datePart.substring(0, 5).replace('/', '-'); 
+
                     let isFuture = false;
-                    if (datePart.length === 5 && datePart.indexOf('-') === 2) {
-                        const targetDateStr = `${currentYear}-${datePart}`;
+                    if (shortDate.length === 5 && shortDate.indexOf('-') === 2) {
+                        const targetDateStr = `${currentYear}-${shortDate}`; 
                         if (targetDateStr > sundayStr) {
                             isFuture = true; 
                         }
@@ -397,7 +399,7 @@
 
             if (futureItems.length > 0) {
                 const futureBlock = document.createElement('div');
-                futureBlock.className = "space-y-1.5";
+                futureBlock.className = "space-y-1.5 mt-4";
                 futureBlock.innerHTML = `
                     <h4 class="text-[10px] font-bold text-stone-400 tracking-wider mb-1.5 border-b border-stone-200/60 pb-0.5 uppercase flex items-center">
                         <span class="mr-1">📅</span> 策展活動預告
@@ -1085,7 +1087,6 @@
             }
         }
         
-        // 🚀 核心補齊輔助功能 A：日期轉換字串
         function formatDateString(dObj) {
             let yyyy = dObj.getFullYear();
             let mm = String(dObj.getMonth() + 1).padStart(2, '0');
@@ -1093,14 +1094,25 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
-        // 🚀 核心補齊輔助功能 B：處理 Excel 載入的時間字串
+        // 🚀 核心優化改動：重新改寫 parseToTimeString，徹底解決 Excel 初始日期「1899」造成的時間轉型錯誤
         function parseToTimeString(excelTimeStr) {
             if (!excelTimeStr) return "13:00";
             let s = String(excelTimeStr).trim();
+            
+            // 如果含有 1899 錯誤年份日期（表示被誤轉為完整日期物件），直接抽離最右側的時間部分
+            if (s.indexOf("1899-12-30") > -1 || s.indexOf("1899/") > -1) {
+                let parts = s.split(" ");
+                s = parts[parts.length - 1].trim(); // 拿取 "18:30:00"
+            }
+            
+            // 如果是帶有秒數的標準時間格式（如 "18:30:00" 或是剛剛過濾出來的格式）
             if (s.indexOf(":") > -1) {
                 let p = s.split(":");
+                // 僅提煉並回傳「時:分」
                 return `${p[0].padStart(2,'0')}:${p[1].padStart(2,'0')}`;
             }
+            
+            // 如果是純小數點的 Excel 原始時間戳數字
             if (s.startsWith("0.") || s === "0" || parseFloat(s) < 1) {
                 let totalMin = Math.round(parseFloat(s) * 1440);
                 let h = Math.floor(totalMin / 60);
@@ -1110,7 +1122,6 @@
             return s;
         }
 
-        // 🚀 核心補齊輔助功能 C：購物車實時計算與浮動條動態顯示
         function updateStickyCartCalculation() {
             if (!selectedBrand) return;
             const brandMenu = dbData.menus ? (dbData.menus[selectedBrand.id] || []) : [];
