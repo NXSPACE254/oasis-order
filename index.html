@@ -200,8 +200,8 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        const CACHE_KEY = 'nx_cache_data_v10';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v10';
+        const CACHE_KEY = 'nx_cache_data_v11';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v11';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
@@ -210,7 +210,7 @@
         let isInternalBackCall = false; 
 
         window.addEventListener('DOMContentLoaded', () => {
-            // 自動帶入老顧客前次成功的姓名、電話紀錄
+            // 自動讀取本地快取，帶入歷史填寫人聯絡資訊
             const savedName = localStorage.getItem('nx_cust_name');
             const savedPhone = localStorage.getItem('nx_cust_phone');
 
@@ -546,7 +546,6 @@
             closeCustomModal();
         }
 
-        // 點擊進入點餐，做雙重清洗格式處理
         document.getElementById('go-order-btn').addEventListener('click', function() {
             if (!selectedBrand) return;
             
@@ -566,7 +565,6 @@
             `;
             promoBanner.classList.remove('hidden');
             
-            // 雙層保險：經由 parseToTimeString 格式化提取截止時間
             let configCutoff = parseToTimeString(selectedBrand.cutoffTime);
             
             document.getElementById('cutoff-notice-msg').innerHTML = `
@@ -660,7 +658,6 @@
             updateStickyCartCalculation(); 
         });
 
-        // 動態渲染時間下拉選單 (核心修復點：完美應對並過濾任何 1899 時區溢出)
         function checkSelectedDateCutoff() {
             const dateSelect = document.getElementById('pickup_date');
             const timeSelect = document.getElementById('pickup_time');
@@ -683,7 +680,6 @@
                 timeSelect.disabled = false;
                 timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black";
                 
-                // 雙層安全清洗：將時間欄位資料字串化解析
                 let startStr = parseToTimeString(selectedBrand.startTime);
                 let endStr = parseToTimeString(selectedBrand.endTime);
                 let intervalMin = parseInt(selectedBrand.timeInterval) || 30;
@@ -983,12 +979,20 @@
                 </p>
             `;
 
+            // 【💡 核心Bug修正點】：在此處對齊並打包所有要寄送給 GAS 的命名包，絕不空心漏氣
             window.pendingOrder = {
-                brandId: selectedBrand.id, brand: selectedBrand.name,
-                name: document.getElementById('cust_name').value.trim(), phone: document.getElementById('cust_phone').value.trim(),
-                date: displayDateText, time: document.getElementById('pickup_time').value,
-                order_content: finalItems.join(' ｜ '), total: total, dining_option: finalDiningStyle,
-                note: document.getElementById('order_note').value.trim() || "無", orderToken: "NX_" + Date.now(), itemsOrdered: itemsOrderedMap
+                brandId: selectedBrand.id, 
+                brand: selectedBrand.name,
+                name: document.getElementById('cust_name').value.trim(), 
+                phone: document.getElementById('cust_phone').value.trim(),
+                date: displayDateText.trim(), 
+                time: document.getElementById('pickup_time').value,
+                order_content: finalItems.join(' ｜ '), 
+                total: total, 
+                dining_option: finalDiningStyle,
+                note: document.getElementById('order_note').value.trim() || "無", 
+                orderToken: "NX_" + Date.now(), 
+                itemsOrdered: itemsOrderedMap
             };
 
             const actionButtons = `
@@ -1005,7 +1009,6 @@
                 return;
             }
 
-            // 成功提交時，快取儲存客戶資訊
             localStorage.setItem('nx_cust_name', window.pendingOrder.name);
             localStorage.setItem('nx_cust_phone', window.pendingOrder.phone);
 
@@ -1107,7 +1110,6 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
-        // 超強大高容錯時間解析器 (不論是 1899 日期字串、純小數、還是標準時分秒，全數過濾清洗為標準 HH:mm)
         function parseToTimeString(excelTimeStr) {
             if (!excelTimeStr) return "13:00";
             let s = String(excelTimeStr).trim();
