@@ -65,7 +65,7 @@
                         <span id="announce-arrow" class="text-xs text-stone-400 transition-transform duration-200">▼</span>
                     </button>
                     <div id="announce-content" class="p-3 border-t border-gray-100 text-xs text-stone-600 bg-white/50">
-                        <div id="dynamic-announcement-box" class="space-y-2"></div>
+                        <div id="dynamic-announcement-box" class="space-y-4"></div>
                     </div>
                 </div>
 
@@ -200,15 +200,15 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        // 🚀 快取強制刷新識別碼升級至 v8
-        const CACHE_KEY = 'nx_cache_data_v8';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v8';
+        // 🚀 快取強制刷新識別碼升級至 v9
+        const CACHE_KEY = 'nx_cache_data_v9';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v9';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
         let selectedBrand = null;
         let currentVenue = 'oasis';
-        let isInternalBackCall = false; // 🚀 用於標記是否為內部點擊返回，避免二次觸發歷史紀錄異常
+        let isInternalBackCall = false; 
 
         window.addEventListener('DOMContentLoaded', () => {
             localStorage.clear(); 
@@ -266,16 +266,14 @@
                 });
             }
 
-            // 🚀 核心路由監聽防禦：監聽手機上的實體返回鍵 (popstate)
             window.addEventListener('popstate', (e) => {
                 const orderStage = document.getElementById('order-stage');
-                // 如果點餐畫面目前是開啟的，代表顧客按了手機返回鍵
                 if (orderStage && !orderStage.classList.contains('hidden')) {
                     if (!isInternalBackCall) {
-                        executeBackToEntranceUI(); // 只縮回主畫面，不跳出網頁
+                        executeBackToEntranceUI(); 
                     }
                 }
-                isInternalBackCall = false; // 重置狀態
+                isInternalBackCall = false; 
             });
         });
 
@@ -299,6 +297,7 @@
             return text.replace(/🔥?\s*大麗士獨家加碼.*/g, "").trim();
         }
 
+        // 🚀 核心改動點：全自動日期分流渲染器（區分：本週活動 / 活動預告）
         function renderStructuredNotice(rawText) {
             const container = document.getElementById('dynamic-announcement-box');
             if (!container) return;
@@ -310,31 +309,44 @@
                 return;
             }
 
+            // 1. 取得「本週日」的截止日期時間，用來與公告內的活動做比對
+            const now = new Date();
+            const currentDay = now.getDay(); 
+            const daysToSunday = currentDay === 0 ? 0 : 7 - currentDay;
+            const sundayObj = new Date(now);
+            sundayObj.setDate(now.getDate() + daysToSunday);
+            
+            // 格式化本週日為 YYYY-MM-DD 字串
+            const sundayStr = formatDateString(sundayObj);
+            const currentYear = now.getFullYear();
+
             const lines = cleanNotice.split('\n');
-            let currentSection = null;
+            
+            // 建立兩個容器，分別存放本週與預告
+            let thisWeekItems = [];
+            let futureItems = [];
+            let pureTextLines = [];
 
             lines.forEach(line => {
                 let cleanLine = line.trim();
                 if (cleanLine === "") return;
 
-                if (cleanLine.indexOf('本週') > -1 || cleanLine.indexOf('預告') > -1 || cleanLine.indexOf('活動') > -1 && cleanLine.indexOf('|') === -1) {
-                    currentSection = document.createElement('div');
-                    currentSection.className = "mt-2 first:mt-0";
-                    
-                    const secTitle = document.createElement('h4');
-                    secTitle.className = "text-[10px] font-bold text-stone-400 tracking-wider mb-1.5 border-b border-stone-100/60 pb-0.5 uppercase";
-                    secTitle.innerText = cleanLine;
-                    
-                    currentSection.appendChild(secTitle);
-                    container.appendChild(currentSection);
-                    return;
-                }
-
+                // 如果含有日期切分符號 |
                 if (cleanLine.indexOf('|') > -1) {
                     const parts = cleanLine.split('|');
-                    const datePart = parts[0].trim();
+                    const datePart = parts[0].trim(); // 例如 "07-06"
                     const contentPart = parts[1].trim();
 
+                    // 解析日期，補上當前年份進行精準時間戳比對
+                    let isFuture = false;
+                    if (datePart.length === 5 && datePart.indexOf('-') === 2) {
+                        const targetDateStr = `${currentYear}-${datePart}`;
+                        if (targetDateStr > sundayStr) {
+                            isFuture = true; // 超過本週日，歸類為預告
+                        }
+                    }
+
+                    // 處理活動種類標籤 [餐車]、[畫展] 等
                     let typeBadgeHtml = "";
                     let nameText = contentPart;
                     const typeMatch = contentPart.match(/^\[(.+?)\]/);
@@ -352,22 +364,66 @@
                         typeBadgeHtml = `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded border ${colorClass} tracking-wide flex-shrink-0">${typeName}</span>`;
                     }
 
-                    const rowEl = document.createElement('div');
-                    rowEl.className = "flex items-center justify-start space-x-2 py-1.5 px-2 bg-stone-50/70 rounded-lg border border-stone-100/60 shadow-3xs hover:bg-white transition mb-1";
-                    rowEl.innerHTML = `
-                        <span class="text-[10px] font-bold text-stone-700 bg-stone-200/50 px-1.5 py-0.5 rounded font-mono flex-shrink-0">${datePart}</span>
-                        ${typeBadgeHtml}
-                        <span class="text-xs font-bold text-stone-900 tracking-wide truncate flex-1 min-w-0">${nameText}</span>
+                    const rowHtml = `
+                        <div class="flex items-center justify-start space-x-2 py-1.5 px-2 bg-stone-50/70 rounded-lg border border-stone-100/60 shadow-3xs hover:bg-white transition mb-1">
+                            <span class="text-[10px] font-bold text-stone-700 bg-stone-200/50 px-1.5 py-0.5 rounded font-mono flex-shrink-0">${datePart}</span>
+                            ${typeBadgeHtml}
+                            <span class="text-xs font-bold text-stone-900 tracking-wide truncate flex-1 min-w-0">${nameText}</span>
+                        </div>
                     `;
 
-                    if (currentSection) currentSection.appendChild(rowEl); else container.appendChild(rowEl);
+                    if (isFuture) {
+                        futureItems.push(rowHtml);
+                    } else {
+                        thisWeekItems.push(rowHtml);
+                    }
                 } else {
-                    const pEl = document.createElement('p');
-                    pEl.className = "text-[11px] text-stone-500 pl-2 leading-relaxed";
-                    pEl.innerText = cleanLine;
-                    if (currentSection) currentSection.appendChild(pEl); else container.appendChild(pEl);
+                    // 純文字公告（如：無日期說明的文字）
+                    if (cleanLine.indexOf('本週') === -1 && cleanLine.indexOf('預告') === -1 && cleanLine.indexOf('活動') === -1) {
+                        pureTextLines.push(`<p class="text-[11px] text-stone-500 pl-2 leading-relaxed">${cleanLine}</p>`);
+                    }
                 }
             });
+
+            // 2. 開始將分類好的結構渲染到前端畫面上
+            // A. 先渲染純文字公告
+            if (pureTextLines.length > 0) {
+                const textBlock = document.createElement('div');
+                textBlock.className = "mb-2 space-y-1";
+                textBlock.innerHTML = pureTextLines.join('');
+                container.appendChild(textBlock);
+            }
+
+            // B. 渲染「🔥 本週活動」區塊
+            if (thisWeekItems.length > 0) {
+                const thisWeekBlock = document.createElement('div');
+                thisWeekBlock.className = "space-y-1.5";
+                thisWeekBlock.innerHTML = `
+                    <h4 class="text-[10px] font-bold text-emerald-600 tracking-wider mb-1.5 border-b border-emerald-100 pb-0.5 uppercase flex items-center">
+                        <span class="mr-1">🔥</span> 本週活動檔期
+                    </h4>
+                    ${thisWeekItems.join('')}
+                `;
+                container.appendChild(thisWeekBlock);
+            }
+
+            // C. 渲染「📅 活動預告」區塊
+            if (futureItems.length > 0) {
+                const futureBlock = document.createElement('div');
+                futureBlock.className = "space-y-1.5";
+                futureBlock.innerHTML = `
+                    <h4 class="text-[10px] font-bold text-stone-400 tracking-wider mb-1.5 border-b border-stone-200/60 pb-0.5 uppercase flex items-center">
+                        <span class="mr-1">📅</span> 策展活動預告
+                    </h4>
+                    ${futureItems.join('')}
+                `;
+                container.appendChild(futureBlock);
+            }
+
+            // 如果都沒有任何排程活動
+            if (thisWeekItems.length === 0 && futureItems.length === 0 && pureTextLines.length === 0) {
+                container.innerHTML = `<p class="text-stone-400 text-center py-2">暫無近期的活動排程。</p>`;
+            }
         }
 
         function switchVenue(venue) {
@@ -481,17 +537,14 @@
             document.getElementById('announce-content').classList.toggle('hidden');
         }
 
-        // 🚀 頂層返回主畫面中樞
         function backToEntrance() {
             isInternalBackCall = true;
-            // 顧客如果點擊畫面上的「← 返回品牌選擇」，主動把剛才寫進歷史紀錄的虛擬節點洗掉（退回一步）
             if (window.location.hash === "#order") {
                 window.history.back();
             }
             executeBackToEntranceUI();
         }
 
-        // 🚀 純粹的網頁 UI 切換縮回首頁
         function executeBackToEntranceUI() {
             document.getElementById('venue-tabs-container').classList.remove('hidden');
             document.getElementById('order-stage').classList.add('hidden');
@@ -503,7 +556,6 @@
         document.getElementById('go-order-btn').addEventListener('click', function() {
             if (!selectedBrand) return;
             
-            // 🚀 核心防禦：顧客點進點餐介面時，往歷史紀錄塞入一個不影響網頁刷新的虛擬錨點「#order」
             window.history.pushState({ page: "order" }, "", "#order");
 
             document.getElementById('venue-tabs-container').classList.add('hidden');
@@ -850,7 +902,7 @@
             
             const dateSelect = document.getElementById('pickup_date');
             const selectedOpt = dateSelect.options[dateSelect.selectedIndex];
-            if (selectedOpt.getAttribute('data-expired'] === 'true') {
+            if (selectedOpt.getAttribute('data-expired') === 'true') {
                 alert("抱歉，您選擇的日期已經超過該店家的最晚下單時間，無法送出訂單！");
                 return;
             }
@@ -887,7 +939,7 @@
                     } else if (item.options) {
                         let opts = [];
                         item.options.split(",").forEach((rawOpt, optIdx) => {
-                            const cb = document.querySelector(`input[name="opt_${idx}_${optIdx}"]`);
+                            const cb = document.querySelector(`input[name="opt_${index}_${optIdx}"]`);
                             if (cb && cb.checked) {
                                 let price = parseInt(cb.getAttribute('data-price')) || 0;
                                 opts.push(cb.value); sum += (price * qty);
