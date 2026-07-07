@@ -200,7 +200,6 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        // 🚀 快取強制刷新識別碼升級至 v9
         const CACHE_KEY = 'nx_cache_data_v9';
         const CACHE_TIME_KEY = 'nx_cache_timestamp_v9';
         const CACHE_DURATION = 600000; 
@@ -277,6 +276,7 @@
             });
         });
 
+        // 🚀 修正點：補齊解鎖畫面的關閉機制，防止轉圈圈動畫阻擋
         function initializePageData(data) {
             if (!data || typeof data !== 'object') data = { main_config: {}, brands: [], menus: {} };
             if (!data.main_config) data.main_config = {};
@@ -287,7 +287,8 @@
             switchVenue('oasis'); 
             renderHighDefBrandButtons();
 
-            document.getElementById('loading-spinner').classList.add('hidden');
+            // 補上將轉圈圈隱藏並開啟大區塊的防禦線
+            removeLoadingSpinner();
             document.getElementById('main-content').classList.remove('hidden');
             checkOrderHistory();
         }
@@ -297,7 +298,6 @@
             return text.replace(/🔥?\s*大麗士獨家加碼.*/g, "").trim();
         }
 
-        // 🚀 核心改動點：全自動日期分流渲染器（區分：本週活動 / 活動預告）
         function renderStructuredNotice(rawText) {
             const container = document.getElementById('dynamic-announcement-box');
             if (!container) return;
@@ -309,20 +309,17 @@
                 return;
             }
 
-            // 1. 取得「本週日」的截止日期時間，用來與公告內的活動做比對
             const now = new Date();
             const currentDay = now.getDay(); 
             const daysToSunday = currentDay === 0 ? 0 : 7 - currentDay;
             const sundayObj = new Date(now);
             sundayObj.setDate(now.getDate() + daysToSunday);
             
-            // 格式化本週日為 YYYY-MM-DD 字串
             const sundayStr = formatDateString(sundayObj);
             const currentYear = now.getFullYear();
 
             const lines = cleanNotice.split('\n');
             
-            // 建立兩個容器，分別存放本週與預告
             let thisWeekItems = [];
             let futureItems = [];
             let pureTextLines = [];
@@ -331,22 +328,19 @@
                 let cleanLine = line.trim();
                 if (cleanLine === "") return;
 
-                // 如果含有日期切分符號 |
                 if (cleanLine.indexOf('|') > -1) {
                     const parts = cleanLine.split('|');
-                    const datePart = parts[0].trim(); // 例如 "07-06"
+                    const datePart = parts[0].trim(); 
                     const contentPart = parts[1].trim();
 
-                    // 解析日期，補上當前年份進行精準時間戳比對
                     let isFuture = false;
                     if (datePart.length === 5 && datePart.indexOf('-') === 2) {
                         const targetDateStr = `${currentYear}-${datePart}`;
                         if (targetDateStr > sundayStr) {
-                            isFuture = true; // 超過本週日，歸類為預告
+                            isFuture = true; 
                         }
                     }
 
-                    // 處理活動種類標籤 [餐車]、[畫展] 等
                     let typeBadgeHtml = "";
                     let nameText = contentPart;
                     const typeMatch = contentPart.match(/^\[(.+?)\]/);
@@ -378,15 +372,12 @@
                         thisWeekItems.push(rowHtml);
                     }
                 } else {
-                    // 純文字公告（如：無日期說明的文字）
                     if (cleanLine.indexOf('本週') === -1 && cleanLine.indexOf('預告') === -1 && cleanLine.indexOf('活動') === -1) {
                         pureTextLines.push(`<p class="text-[11px] text-stone-500 pl-2 leading-relaxed">${cleanLine}</p>`);
                     }
                 }
             });
 
-            // 2. 開始將分類好的結構渲染到前端畫面上
-            // A. 先渲染純文字公告
             if (pureTextLines.length > 0) {
                 const textBlock = document.createElement('div');
                 textBlock.className = "mb-2 space-y-1";
@@ -394,7 +385,6 @@
                 container.appendChild(textBlock);
             }
 
-            // B. 渲染「🔥 本週活動」區塊
             if (thisWeekItems.length > 0) {
                 const thisWeekBlock = document.createElement('div');
                 thisWeekBlock.className = "space-y-1.5";
@@ -407,7 +397,6 @@
                 container.appendChild(thisWeekBlock);
             }
 
-            // C. 渲染「📅 活動預告」區塊
             if (futureItems.length > 0) {
                 const futureBlock = document.createElement('div');
                 futureBlock.className = "space-y-1.5";
@@ -420,7 +409,6 @@
                 container.appendChild(futureBlock);
             }
 
-            // 如果都沒有任何排程活動
             if (thisWeekItems.length === 0 && futureItems.length === 0 && pureTextLines.length === 0) {
                 container.innerHTML = `<p class="text-stone-400 text-center py-2">暫無近期的活動排程。</p>`;
             }
@@ -939,7 +927,7 @@
                     } else if (item.options) {
                         let opts = [];
                         item.options.split(",").forEach((rawOpt, optIdx) => {
-                            const cb = document.querySelector(`input[name="opt_${index}_${optIdx}"]`);
+                            const cb = document.querySelector(`input[name="opt_${idx}_${optIdx}"]`);
                             if (cb && cb.checked) {
                                 let price = parseInt(cb.getAttribute('data-price')) || 0;
                                 opts.push(cb.value); sum += (price * qty);
@@ -1097,6 +1085,13 @@
                     document.getElementById('hist-total').innerText = order.total || "0";
                 }
             }
+        }
+        
+        function formatDateString(dObj) {
+            let yyyy = dObj.getFullYear();
+            let mm = String(dObj.getMonth() + 1).padStart(2, '0');
+            let dd = String(dObj.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
         }
     </script>
 </body>
