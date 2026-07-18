@@ -175,7 +175,7 @@
 
                     <div id="note-field-box">
                         <label class="block text-gray-700 font-medium mb-1">備註說明 (選填)</label>
-                        <input type="text" id="order_note" placeholder="example：不加辣｜不要洋蔥" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white/80">
+                        <input type="text" id="order_note" placeholder="" class="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white/80">
                     </div>
                     
                     <button type="submit" id="submit-order-btn" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6 hover:bg-emerald-700 transition">確認送出預訂單</button>
@@ -210,7 +210,6 @@
         let isInternalBackCall = false; 
 
         window.addEventListener('DOMContentLoaded', () => {
-            // 自動讀取本地快取，帶入歷史填寫人聯絡資訊
             const savedName = localStorage.getItem('nx_cust_name');
             const savedPhone = localStorage.getItem('nx_cust_phone');
 
@@ -902,6 +901,7 @@
 
             let finalItems = []; let total = 0; let itemsOrderedMap = {};
             const brandMenu = dbData.menus ? (dbData.menus[selectedBrand.id] || []) : [];
+            let totalOrderQty = 0;
 
             for (let index = 0; index < brandMenu.length; index++) {
                 const item = brandMenu[index];
@@ -910,6 +910,7 @@
                 const qty = parseInt(qtySelect.value) || 0;
                 
                 if (qty > 0) {
+                    totalOrderQty += qty;
                     let desc = `${item.name} x ${qty}`; 
                     let sum = item.price * qty;
 
@@ -979,7 +980,6 @@
                 </p>
             `;
 
-            // 【💡 核心Bug修正點】：在此處對齊並打包所有要寄送給 GAS 的命名包，絕不空心漏氣
             window.pendingOrder = {
                 brandId: selectedBrand.id, 
                 brand: selectedBrand.name,
@@ -992,7 +992,8 @@
                 dining_option: finalDiningStyle,
                 note: document.getElementById('order_note').value.trim() || "無", 
                 orderToken: "NX_" + Date.now(), 
-                itemsOrdered: itemsOrderedMap
+                itemsOrdered: itemsOrderedMap,
+                totalOrderQty: totalOrderQty // 帶入餐點總份數供後端即時計算
             };
 
             const actionButtons = `
