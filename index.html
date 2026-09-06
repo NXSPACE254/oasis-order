@@ -200,8 +200,8 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        const CACHE_KEY = 'nx_cache_data_v11';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v11';
+        const CACHE_KEY = 'nx_cache_data_v12';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v12';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
@@ -657,13 +657,24 @@
             updateStickyCartCalculation(); 
         });
 
+        /**
+         * 依顧客選擇的日期產生可取餐時段。
+         *
+         * 規則：
+         * 1. 預設使用 brands_config 的 startTime / endTime / timeInterval。
+         * 2. 如果 dateTimeConfig 有該日期設定，就以該日期設定覆寫。
+         * 3. dateTimeConfig 格式：
+         *    YYYY-MM-DD|開始時間|結束時間
+         *    或 YYYY-MM-DD|開始時間|結束時間|間隔分鐘
+         *    多筆以逗號分隔。
+         */
         function checkSelectedDateCutoff() {
             const dateSelect = document.getElementById('pickup_date');
             const timeSelect = document.getElementById('pickup_time');
             const submitBtn = document.getElementById('submit-order-btn');
-            
+
             if (!dateSelect || dateSelect.options.length === 0) return;
-            
+
             const selectedOpt = dateSelect.options[dateSelect.selectedIndex];
             const isExpired = selectedOpt.getAttribute('data-expired') === 'true';
 
@@ -671,43 +682,111 @@
                 timeSelect.innerHTML = `<option value="" disabled selected>(超過當日預約時間)</option>`;
                 timeSelect.disabled = true;
                 timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed focus:outline-none";
-                
+
                 submitBtn.disabled = true;
                 submitBtn.innerText = "❌ 超過點餐時間（不開放預訂）";
                 submitBtn.className = "w-full bg-gray-300 text-gray-500 py-3 rounded-lg font-medium mt-6 cursor-not-allowed";
-            } else {
-                timeSelect.disabled = false;
-                timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black";
-                
-                let startStr = parseToTimeString(selectedBrand.startTime);
-                let endStr = parseToTimeString(selectedBrand.endTime);
-                let intervalMin = parseInt(selectedBrand.timeInterval) || 30;
-
-                let startHour = parseInt(startStr.split(":")[0], 10);
-                let startMin = parseInt(startStr.split(":")[1], 10);
-                let endHour = parseInt(endStr.split(":")[0], 10);
-                let endMin = parseInt(endStr.split(":")[1], 10);
-
-                let startTotalMinutes = startHour * 60 + startMin;
-                let endTotalMinutes = endHour * 60 + endMin;
-
-                let currentVal = timeSelect.value;
-                let timeOptionsHtml = `<option value="" disabled ${!currentVal ? 'selected' : ''}>請選擇時間</option>`;
-
-                for (let min = startTotalMinutes; min <= endTotalMinutes; min += intervalMin) {
-                    let h = Math.floor(min / 60);
-                    let m = min % 60;
-                    let timeText = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    
-                    timeOptionsHtml += `<option value="${timeText}" ${currentVal === timeText ? 'selected' : ''}>${timeText}</option>`;
-                }
-
-                timeSelect.innerHTML = timeOptionsHtml;
-
-                submitBtn.disabled = false;
-                submitBtn.innerText = "確認送出預訂單";
-                submitBtn.className = "w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6 hover:bg-emerald-700 transition block";
+                return;
             }
+
+            timeSelect.disabled = false;
+            timeSelect.className = "w-full border border-gray-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-black";
+
+            // 先讀取廠商預設時間
+            let startStr = parseToTimeString(selectedBrand.startTime);
+            let endStr = parseToTimeString(selectedBrand.endTime);
+            let intervalMin = parseInt(selectedBrand.timeInterval) || 30;
+
+            // 再讀取「指定日期」的特殊營業時間
+            const selectedDateKey = dateSelect.value; // YYYY-MM-DD
+            const dailyConfig = getDailyTimeConfig(selectedBrand.dateTimeConfig, selectedDateKey);
+
+            if (dailyConfig) {
+                startStr = parseToTimeString(dailyConfig.startTime);
+                endStr = parseToTimeString(dailyConfig.endTime);
+
+                if (dailyConfig.interval) {
+                    intervalMin = parseInt(dailyConfig.interval) || intervalMin;
+                }
+            }
+
+            let startHour = parseInt(startStr.split(":")[0], 10);
+            let startMin = parseInt(startStr.split(":")[1], 10);
+            let endHour = parseInt(endStr.split(":")[0], 10);
+            let endMin = parseInt(endStr.split(":")[1], 10);
+
+            let startTotalMinutes = startHour * 60 + startMin;
+            let endTotalMinutes = endHour * 60 + endMin;
+
+            // 防呆：若時間設定異常，不開放送單
+            if (
+                isNaN(startTotalMinutes) ||
+                isNaN(endTotalMinutes) ||
+                startTotalMinutes > endTotalMinutes ||
+                intervalMin <= 0
+            ) {
+                timeSelect.innerHTML = `<option value="" disabled selected>此日期暫無可預訂時段</option>`;
+                timeSelect.disabled = true;
+                submitBtn.disabled = true;
+                submitBtn.innerText = "❌ 此日期暫無可預訂時段";
+                submitBtn.className = "w-full bg-gray-300 text-gray-500 py-3 rounded-lg font-medium mt-6 cursor-not-allowed";
+                return;
+            }
+
+            let currentVal = timeSelect.value;
+            let timeOptionsHtml = `<option value="" disabled ${!currentVal ? 'selected' : ''}>請選擇時間</option>`;
+            let hasCurrentVal = false;
+
+            for (let min = startTotalMinutes; min <= endTotalMinutes; min += intervalMin) {
+                let h = Math.floor(min / 60);
+                let m = min % 60;
+                let timeText = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+                if (currentVal === timeText) hasCurrentVal = true;
+                timeOptionsHtml += `<option value="${timeText}" ${currentVal === timeText ? 'selected' : ''}>${timeText}</option>`;
+            }
+
+            timeSelect.innerHTML = timeOptionsHtml;
+
+            // 如果切換日期後，原本選的時間不在新日期時段內，就回到「請選擇時間」
+            if (!hasCurrentVal) {
+                timeSelect.value = "";
+            }
+
+            submitBtn.disabled = false;
+            submitBtn.innerText = "確認送出預訂單";
+            submitBtn.className = "w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6 hover:bg-emerald-700 transition block";
+        }
+
+        /**
+         * 從 dateTimeConfig 找出指定日期的時間設定。
+         * 支援：
+         * YYYY-MM-DD|17:00|20:00
+         * YYYY-MM-DD|17:00|20:00|30
+         */
+        function getDailyTimeConfig(rawConfig, targetDate) {
+            if (!rawConfig || !targetDate) return null;
+
+            const rows = String(rawConfig)
+                .split(",")
+                .map(v => v.trim())
+                .filter(Boolean);
+
+            for (const row of rows) {
+                const parts = row.split("|").map(v => v.trim());
+                if (parts.length < 3) continue;
+
+                if (parts[0] === targetDate) {
+                    return {
+                        date: parts[0],
+                        startTime: parts[1],
+                        endTime: parts[2],
+                        interval: parts[3] || ""
+                    };
+                }
+            }
+
+            return null;
         }
 
         function renderMenuList() {
