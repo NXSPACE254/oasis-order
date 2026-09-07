@@ -200,8 +200,8 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        const CACHE_KEY = 'nx_cache_data_v12';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v12';
+        const CACHE_KEY = 'nx_cache_data_v13';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v13';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
@@ -852,6 +852,7 @@
                         <div>
                             <span class="font-semibold ${titleColorStyle} text-sm">${item.name}</span>
                             ${priceLabelHtml}
+                            ${item.description ? `<p class="text-[11px] text-gray-500 mt-1 leading-relaxed whitespace-pre-line">${item.description}</p>` : ""}
                         </div>
                     </div>
                     <div class="flex-shrink-0">
