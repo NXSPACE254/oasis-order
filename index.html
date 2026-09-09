@@ -119,9 +119,7 @@
 
                 <h2 id="order-target" class="text-lg font-bold text-gray-800 mb-2"></h2>
                 
-                <div id="browse-only-banner" class="hidden bg-stone-100/90 border border-stone-300 text-stone-700 text-xs p-3 rounded-lg mb-5 leading-relaxed text-center font-medium">
-                    📢 系統提示：目前非本週點餐檔期，此介面僅供「瀏覽菜單」使用，暫不開放線上填單預訂。
-                </div>
+                <div id="browse-only-banner" class="hidden bg-stone-100/90 border border-stone-300 text-stone-700 text-xs p-3 rounded-lg mb-5 leading-relaxed text-center font-medium"></div>
 
                 <form id="menuForm" class="space-y-4 text-sm">
                     <div id="customer-info-fields" class="space-y-4">
@@ -169,7 +167,7 @@
                     </div>
 
                     <div class="border-t border-b border-gray-100 py-4 my-4">
-                        <p class="font-bold text-gray-800 mb-3 text-base">🍽️ 線上菜單（可多選）</p>
+                        <p id="menu-section-title" class="font-bold text-gray-800 mb-3 text-base">🍽️ 線上菜單（可多選）</p>
                         <div id="menu_list_container" class="space-y-1"></div>
                     </div>
 
@@ -514,13 +512,14 @@
             if (brand.igUrl) { igLink.href = brand.igUrl; igLink.className = "text-pink-600 block"; }
 
             const goOrderBtn = document.getElementById('go-order-btn');
+            const orderMode = getBrandOrderMode(brand);
             if (brand.status === "下架") {
                 goOrderBtn.disabled = true;
-                goOrderBtn.innerText = "❌ 廠商暫未開放點餐";
+                goOrderBtn.innerText = "❌ 廠商目前未開放";
                 goOrderBtn.className = "w-full bg-gray-300 text-gray-500 text-sm py-3 rounded-lg font-medium cursor-not-allowed";
             } else {
                 goOrderBtn.disabled = false;
-                goOrderBtn.innerText = "進入點餐介面";
+                goOrderBtn.innerText = orderMode === "browse" ? "查看線上菜單" : "查看菜單／線上預訂";
                 goOrderBtn.className = "w-full bg-black text-white text-sm py-3 rounded-lg font-medium tracking-wide hover:bg-gray-800 transition";
             }
         }
@@ -545,6 +544,59 @@
             closeCustomModal();
         }
 
+        // 廠商模式：order = 開放線上訂餐；browse = 僅供閱覽菜單。
+        // 未設定時預設為 order，避免既有廠商因新增欄位而失效。
+        function getBrandOrderMode(brand) {
+            const raw = brand && brand.orderMode !== undefined && brand.orderMode !== null
+                ? String(brand.orderMode).trim().toLowerCase()
+                : "";
+            return raw === "browse" ? "browse" : "order";
+        }
+
+        function getFutureBrandDates(brand) {
+            if (!brand || !brand.rawDates) return [];
+            const todayStr = formatDateString(new Date());
+            return String(brand.rawDates)
+                .split(",")
+                .map(v => v.trim())
+                .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= todayStr)
+                .sort();
+        }
+
+        function formatDisplayDate(dateStr) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ""))) return "";
+            const parts = dateStr.split("-");
+            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            return `${d.getMonth()+1}/${d.getDate()}（${['日','一','二','三','四','五','六'][d.getDay()]}）`;
+        }
+
+        // 線上預訂開放日：出攤日所在週的「前一週週一」。
+        function getOrderOpenDate(dateStr) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ""))) return null;
+            const parts = dateStr.split("-");
+            const eventDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            const day = eventDate.getDay();
+            const daysSinceMonday = day === 0 ? 6 : day - 1;
+            const mondayOfEventWeek = new Date(eventDate);
+            mondayOfEventWeek.setDate(eventDate.getDate() - daysSinceMonday);
+            const openDate = new Date(mondayOfEventWeek);
+            openDate.setDate(mondayOfEventWeek.getDate() - 7);
+            openDate.setHours(0, 0, 0, 0);
+            return openDate;
+        }
+
+        function setBrowseBannerHtml(htmlText, tone = "stone") {
+            const browseBanner = document.getElementById('browse-only-banner');
+            if (!browseBanner) return;
+            const toneClasses = tone === "blue"
+                ? "bg-blue-50 border border-blue-200 text-blue-800"
+                : tone === "amber"
+                    ? "bg-amber-50 border border-amber-200 text-amber-800"
+                    : "bg-stone-100 border border-stone-300 text-stone-700";
+            browseBanner.innerHTML = htmlText;
+            browseBanner.className = `${toneClasses} text-xs p-3 rounded-lg mb-5 leading-relaxed text-center font-medium block`;
+        }
+
         document.getElementById('go-order-btn').addEventListener('click', function() {
             if (!selectedBrand) return;
             
@@ -553,10 +605,11 @@
             document.getElementById('venue-tabs-container').classList.add('hidden');
             document.getElementById('entrance-stage').classList.add('hidden');
             document.getElementById('order-stage').classList.remove('hidden');
-            document.getElementById('order-target').innerText = "訂購廠商：" + selectedBrand.name;
+
+            const orderMode = getBrandOrderMode(selectedBrand);
+            document.getElementById('order-target').innerText = (orderMode === "browse" ? "菜單廠商：" : "訂購廠商：") + selectedBrand.name;
 
             const promoBanner = document.getElementById('dynamic-promo-banner');
-            
             promoBanner.innerHTML = `
                 <div class="bg-amber-50 border-amber-200 text-amber-800 p-2.5 rounded-lg border shadow-xs">
                     🎁 <strong>場地問卷回饋：</strong>填寫問卷並出示即享<strong>折價</strong>優惠！👉 <a href="https://forms.gle/zp2bKyBMKqrpc1fZ9" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline hover:text-blue-800">點此填寫問卷</a>
@@ -565,7 +618,6 @@
             promoBanner.classList.remove('hidden');
             
             let configCutoff = parseToTimeString(selectedBrand.cutoffTime);
-            
             document.getElementById('cutoff-notice-msg').innerHTML = `
                 <p>1. 💡 每日預點最後時間為 ${configCutoff} 止，如仍有當日點餐需求，歡迎洽詢廠商。</p>
                 <p>2. 📢 系統每次公布兩週行程，如有異動，請依廠商活動資訊為準。</p>
@@ -575,7 +627,8 @@
             dateSelect.innerHTML = "";
 
             const now = new Date();
-            let isBrowseOnlyMode = true; 
+            let isBrowseOnlyMode = true;
+            let browseReason = "outside_window";
             
             let cutHour = parseInt(configCutoff.split(":")[0]) || 13;
             let cutMin = parseInt(configCutoff.split(":")[1]) || 0;
@@ -590,18 +643,26 @@
             let endOfNextWeekStr = formatDateString(sundayObj);
 
             let todayStr = formatDateString(now);
+            const futureDates = getFutureBrandDates(selectedBrand);
+            const nextDateStr = futureDates.length > 0 ? futureDates[0] : "";
 
-            if (selectedBrand.rawDates) {
+            // browse 廠商永遠只提供菜單瀏覽，但仍顯示最近一次出攤日期。
+            if (orderMode === "browse") {
+                isBrowseOnlyMode = true;
+                browseReason = "brand_browse";
+            } else if (selectedBrand.rawDates) {
                 let excelDateStrings = String(selectedBrand.rawDates).split(",");
                 
                 excelDateStrings.forEach(dStr => {
                     let cleanStr = dStr.trim();
-                    if (cleanStr.length !== 10) return; 
+                    if (cleanStr.length !== 10) return;
 
+                    // order 模式沿用原規則：只開放本週＋下週，亦即活動前一週週一開始可訂。
                     if (cleanStr < startOfWeekStr || cleanStr > endOfNextWeekStr) return;
                     if (cleanStr < todayStr) return;
 
-                    isBrowseOnlyMode = false; 
+                    isBrowseOnlyMode = false;
+                    browseReason = "ordering_open";
 
                     let parts = cleanStr.split("-");
                     let tDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
@@ -631,19 +692,53 @@
             const submitBtn = document.getElementById('submit-order-btn');
             const browseBanner = document.getElementById('browse-only-banner');
             const noteBox = document.getElementById('note-field-box');
+            const diningBox = document.getElementById('dining-option-box');
+            const menuTitle = document.getElementById('menu-section-title');
 
             if (isBrowseOnlyMode || dateSelect.options.length === 0) {
                 infoFields.className = "space-y-4 hidden";
                 submitBtn.className = "w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6 hover:bg-emerald-700 transition hidden";
                 noteBox.className = "hidden";
-                browseBanner.className = "bg-stone-100 border border-stone-300 text-stone-700 text-xs p-3 rounded-lg mb-5 leading-relaxed text-center font-medium block";
+                diningBox.className = "hidden";
+                if (menuTitle) menuTitle.innerText = "🍽️ 線上菜單";
+
+                if (browseReason === "brand_browse") {
+                    if (nextDateStr) {
+                        setBrowseBannerHtml(
+                            `📅 <strong>下次出攤｜${formatDisplayDate(nextDateStr)}</strong><br>` +
+                            `🍙 本次提供<strong>線上菜單瀏覽</strong>，歡迎先看看菜單，現場再挑選喜歡的餐點！`,
+                            "blue"
+                        );
+                    } else {
+                        setBrowseBannerHtml(
+                            `🍙 本次提供<strong>線上菜單瀏覽</strong>，歡迎先看看菜單；近期出攤日期請依活動公告為準。`,
+                            "blue"
+                        );
+                    }
+                } else {
+                    if (nextDateStr) {
+                        const openDate = getOrderOpenDate(nextDateStr);
+                        const openDateStr = openDate ? formatDisplayDate(formatDateString(openDate)) : "";
+                        setBrowseBannerHtml(
+                            `📅 <strong>下次出攤｜${formatDisplayDate(nextDateStr)}</strong><br>` +
+                            `線上預訂將於 <strong>${openDateStr}</strong> 開放，歡迎先瀏覽本次菜單！`,
+                            "amber"
+                        );
+                    } else {
+                        setBrowseBannerHtml(
+                            `📅 目前尚未公布下一次可預訂的出攤日期，歡迎先瀏覽菜單。`,
+                            "stone"
+                        );
+                    }
+                }
             } else {
                 infoFields.className = "space-y-4 block";
                 submitBtn.className = "w-full bg-emerald-600 text-white py-3 rounded-lg font-medium mt-6 hover:bg-emerald-700 transition block";
                 noteBox.className = "block";
-                browseBanner.className = "bg-stone-100 border border-stone-300 text-stone-700 text-xs p-3 rounded-lg mb-5 leading-relaxed text-center font-medium hidden";
+                browseBanner.className = "hidden";
+                browseBanner.innerHTML = "";
+                if (menuTitle) menuTitle.innerText = "🍽️ 線上菜單（可多選）";
 
-                const diningBox = document.getElementById('dining-option-box');
                 let hasDiningVal = String(selectedBrand.hasDining).toUpperCase();
                 if (hasDiningVal === 'TRUE' || selectedBrand.hasDining === true) {
                     diningBox.className = "block";
@@ -653,8 +748,10 @@
             }
 
             renderMenuList();
-            checkSelectedDateCutoff();
-            updateStickyCartCalculation(); 
+            if (!isBrowseOnlyMode && dateSelect.options.length > 0) {
+                checkSelectedDateCutoff();
+            }
+            updateStickyCartCalculation();
         });
 
         /**
@@ -977,6 +1074,11 @@
 
         document.getElementById('menuForm').addEventListener('submit', function(e) {
             e.preventDefault();
+
+            if (getBrandOrderMode(selectedBrand) === "browse") {
+                alert("此廠商目前僅提供線上菜單瀏覽，請於現場點餐。");
+                return;
+            }
             
             const dateSelect = document.getElementById('pickup_date');
             const selectedOpt = dateSelect.options[dateSelect.selectedIndex];
