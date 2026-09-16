@@ -147,7 +147,7 @@
                             
                             <div id="cutoff-notice-msg" class="text-[11px] text-amber-600 font-medium mt-2.5 leading-relaxed bg-amber-50 p-2 rounded border border-amber-100 space-y-1">
                                 <p>1. 💡 每日預點最後時間為 13:00 止，如仍有當日點餐需求，歡迎洽詢廠商。</p>
-                                <p>2. 📢 系統每次公布兩週行程，如有異動，請依廠商活動資訊為準。</p>
+                                <p>2. 📢 系統採滾動 14 天開放預訂，每日更新可預訂日期，如有異動請依廠商活動資訊為準。</p>
                             </div>
                         </div>
 
@@ -198,8 +198,8 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        const CACHE_KEY = 'nx_cache_data_v13';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v13';
+        const CACHE_KEY = 'nx_cache_data_v14';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v14';
         const CACHE_DURATION = 600000; 
 
         let dbData = { main_config: {}, brands: [], menus: {} };
@@ -570,17 +570,14 @@
             return `${d.getMonth()+1}/${d.getDate()}（${['日','一','二','三','四','五','六'][d.getDay()]}）`;
         }
 
-        // 線上預訂開放日：出攤日所在週的「前一週週一」。
+        // 線上預訂開放日：出攤日前 13 天（滾動 14 天窗口的第一天）。
         function getOrderOpenDate(dateStr) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ""))) return null;
             const parts = dateStr.split("-");
             const eventDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-            const day = eventDate.getDay();
-            const daysSinceMonday = day === 0 ? 6 : day - 1;
-            const mondayOfEventWeek = new Date(eventDate);
-            mondayOfEventWeek.setDate(eventDate.getDate() - daysSinceMonday);
-            const openDate = new Date(mondayOfEventWeek);
-            openDate.setDate(mondayOfEventWeek.getDate() - 7);
+            // 14 個日曆日包含出攤當日，因此從出攤日前 13 天開始開放。
+            const openDate = new Date(eventDate);
+            openDate.setDate(eventDate.getDate() - 13);
             openDate.setHours(0, 0, 0, 0);
             return openDate;
         }
@@ -633,16 +630,13 @@
             let cutHour = parseInt(configCutoff.split(":")[0]) || 13;
             let cutMin = parseInt(configCutoff.split(":")[1]) || 0;
 
-            let mondayObj = new Date(now);
-            let daysToMonday = now.getDay() === 0 ? 6 : now.getDay() - 1;
-            mondayObj.setDate(now.getDate() - daysToMonday);
-            let startOfWeekStr = formatDateString(mondayObj);
-
-            let sundayObj = new Date(mondayObj);
-            sundayObj.setDate(mondayObj.getDate() + 13);
-            let endOfNextWeekStr = formatDateString(sundayObj);
-
-            let todayStr = formatDateString(now);
+            // order 模式採「滾動 14 天」預訂窗口：
+            // 今日起算共 14 個日曆日（今天～第 14 天），不再以星期一／星期日切換。
+            const todayStr = formatDateString(now);
+            const bookingEnd = new Date(now);
+            bookingEnd.setHours(23, 59, 59, 999);
+            bookingEnd.setDate(bookingEnd.getDate() + 13);
+            const bookingEndStr = formatDateString(bookingEnd);
             const futureDates = getFutureBrandDates(selectedBrand);
             const nextDateStr = futureDates.length > 0 ? futureDates[0] : "";
 
@@ -657,9 +651,8 @@
                     let cleanStr = dStr.trim();
                     if (cleanStr.length !== 10) return;
 
-                    // order 模式沿用原規則：只開放本週＋下週，亦即活動前一週週一開始可訂。
-                    if (cleanStr < startOfWeekStr || cleanStr > endOfNextWeekStr) return;
-                    if (cleanStr < todayStr) return;
+                    // order 模式：只開放今日起算 14 天內的出攤日期。
+                    if (cleanStr < todayStr || cleanStr > bookingEndStr) return;
 
                     isBrowseOnlyMode = false;
                     browseReason = "ordering_open";
@@ -721,7 +714,7 @@
                         const openDateStr = openDate ? formatDisplayDate(formatDateString(openDate)) : "";
                         setBrowseBannerHtml(
                             `📅 <strong>下次出攤｜${formatDisplayDate(nextDateStr)}</strong><br>` +
-                            `線上預訂將於 <strong>${openDateStr}</strong> 開放，歡迎先瀏覽本次菜單！`,
+                            `線上預訂將於 <strong>${openDateStr}</strong> 開放（滾動 14 天），歡迎先瀏覽本次菜單！`,
                             "amber"
                         );
                     } else {
