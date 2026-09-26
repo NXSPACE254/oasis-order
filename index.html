@@ -303,34 +303,104 @@
             const container = document.getElementById('dynamic-announcement-box');
             if (!container) return;
             container.replaceChildren();
-            const today = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
-            const list = (Array.isArray(events) ? events : []).filter(e => e.date >= today && e.venue === currentVenue)
-                .sort((a,b) => a.date.localeCompare(b.date) || (a.startTime || '').localeCompare(b.startTime || ''));
+            const dateInTaiwan = d => new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(d);
+            const today = dateInTaiwan(new Date());
+            const tomorrowDate = new Date(`${today}T12:00:00+08:00`);
+            tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
+            const tomorrow = dateInTaiwan(tomorrowDate);
+            const list = (Array.isArray(events) ? events : [])
+                .filter(e => e.date >= today && e.venue === currentVenue)
+                .sort((a, b) => a.date.localeCompare(b.date) ||
+                    (a.startTime || '').localeCompare(b.startTime || '') || a.title.localeCompare(b.title));
             if (!list.length) {
-                const p = document.createElement('p'); p.className = 'text-stone-400 text-center py-2';
-                p.textContent = '暫無近期的活動排程。'; container.appendChild(p); return;
+                const p = document.createElement('p');
+                p.className = 'text-stone-400 text-center py-2';
+                p.textContent = '暫無近期的活動排程。';
+                container.appendChild(p);
+                return;
             }
             const groups = new Map();
-            list.forEach(e => { if (!groups.has(e.date)) groups.set(e.date, []); groups.get(e.date).push(e); });
-            const weekday = ['日','一','二','三','四','五','六'];
-            groups.forEach((items,date) => {
-                const section = document.createElement('section'); section.className = 'mb-3 space-y-1';
-                const h = document.createElement('h4'); h.className = 'text-xs font-bold text-emerald-700 border-b border-emerald-100 pb-1';
-                const day = new Date(Number(date.slice(0,4)), Number(date.slice(5,7))-1, Number(date.slice(8,10)));
-                const tomorrow = new Date(date === today ? day : new Date(Number(today.slice(0,4)),Number(today.slice(5,7))-1,Number(today.slice(8,10)))); tomorrow.setDate(tomorrow.getDate()+1);
-                h.textContent = (date === today ? '今天 ' : date === formatDateString(tomorrow) ? '明天 ' : '') + date.slice(5).replace('-','/') + '（' + weekday[day.getDay()] + '）';
+            list.forEach(e => {
+                if (!groups.has(e.date)) groups.set(e.date, []);
+                groups.get(e.date).push(e);
+            });
+            const weekday = ['日', '一', '二', '三', '四', '五', '六'];
+            const dateLabel = date => {
+                const day = new Date(`${date}T12:00:00+08:00`);
+                return `${date.slice(5).replace('-', '/')}（${weekday[day.getUTCDay()]}）`;
+            };
+            const makeBadge = e => {
+                const badge = document.createElement('span');
+                badge.className = 'px-1.5 py-0.5 rounded text-white whitespace-nowrap flex-shrink-0';
+                badge.textContent = e.type || '活動';
+                badge.style.backgroundColor = /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : '#D49A24';
+                return badge;
+            };
+            // 今天、明天保留逐筆營業時間。
+            [today, tomorrow].forEach(date => {
+                const items = groups.get(date);
+                if (!items) return;
+                const section = document.createElement('section');
+                section.className = 'mb-3 space-y-1';
+                const h = document.createElement('h4');
+                h.className = 'text-xs font-bold text-emerald-700 border-b border-emerald-100 pb-1';
+                h.textContent = `${date === today ? '今天' : '明天'} ${dateLabel(date)}`;
                 section.appendChild(h);
                 items.forEach(e => {
-                    const row = document.createElement('div'); row.className = 'flex items-center gap-2 py-1.5 px-2 bg-stone-50 rounded-lg border border-stone-100 text-xs';
-                    const time = document.createElement('span'); time.className = 'text-stone-700 whitespace-nowrap';
-                    time.textContent = [e.startTime,e.endTime].filter(Boolean).join('–') || '時間待公布';
-                    const badge = document.createElement('span'); badge.className = 'px-1.5 py-0.5 rounded text-white whitespace-nowrap';
-                    badge.textContent = e.type || '活動'; badge.style.backgroundColor = /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : '#D49A24';
-                    const name = document.createElement('span'); name.className = 'font-bold text-stone-900 min-w-0'; name.textContent = e.title || '';
-                    row.append(time,badge,name); section.appendChild(row);
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center gap-2 py-1.5 px-2 bg-stone-50 rounded-lg border border-stone-100 text-xs';
+                    const time = document.createElement('span');
+                    time.className = 'text-stone-700 whitespace-nowrap flex-shrink-0';
+                    time.textContent = [e.startTime, e.endTime].filter(Boolean).join('–') || '時間待公布';
+                    const name = document.createElement('span');
+                    name.className = 'font-bold text-stone-900 min-w-0';
+                    name.textContent = e.title || '';
+                    row.append(time, makeBadge(e), name);
+                    section.appendChild(row);
                 });
                 container.appendChild(section);
             });
+            // 後續活動集中顯示：每個日期一列，不顯示營業時間。
+            const futureDates = [...groups.keys()].filter(date => date > tomorrow);
+            if (futureDates.length) {
+                const section = document.createElement('section');
+                section.className = 'mt-3';
+                const h = document.createElement('h4');
+                h.className = 'text-xs font-bold text-emerald-700 border-b border-emerald-100 pb-1 mb-1';
+                h.textContent = '📅 接下來的活動';
+                const rows = document.createElement('div');
+                rows.className = 'space-y-1';
+                futureDates.forEach((date, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-start gap-2 py-1.5 px-2 bg-stone-50 rounded-lg border border-stone-100 text-xs';
+                    if (index >= 5) row.hidden = true;
+                    const day = document.createElement('span');
+                    day.className = 'text-stone-700 whitespace-nowrap flex-shrink-0';
+                    day.textContent = dateLabel(date);
+                    const names = document.createElement('span');
+                    names.className = 'font-bold text-stone-900 min-w-0';
+                    names.textContent = groups.get(date).map(e => e.title).filter(Boolean).join('、');
+                    row.append(day, names);
+                    rows.appendChild(row);
+                });
+                section.append(h, rows);
+                if (futureDates.length > 5) {
+                    const toggle = document.createElement('button');
+                    toggle.type = 'button';
+                    toggle.className = 'text-xs text-emerald-700 font-bold mt-2';
+                    toggle.textContent = `顯示全部 ${futureDates.length} 個日期 ▾`;
+                    let expanded = false;
+                    toggle.addEventListener('click', () => {
+                        expanded = !expanded;
+                        [...rows.children].forEach((row, i) => { row.hidden = !expanded && i >= 5; });
+                        toggle.textContent = expanded ? '收起活動 ▴' : `顯示全部 ${futureDates.length} 個日期 ▾`;
+                    });
+                    section.appendChild(toggle);
+                }
+                container.appendChild(section);
+            }
         }
 
         function switchVenue(venue) {
