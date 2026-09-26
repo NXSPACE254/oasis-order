@@ -198,11 +198,11 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbw_JxFpE2Whdt9rRRR_L-ohF61yMuuRaw-VcfrE2Adxr9FzbS-9ajadyAJHLELSsUg/exec";
         
-        const CACHE_KEY = 'nx_cache_data_v14';
-        const CACHE_TIME_KEY = 'nx_cache_timestamp_v14';
-        const CACHE_DURATION = 600000; 
+        const CACHE_KEY = 'nx_cache_data_v15';
+        const CACHE_TIME_KEY = 'nx_cache_timestamp_v15';
+        const CACHE_DURATION = 120000; 
 
-        let dbData = { main_config: {}, brands: [], menus: {} };
+        let dbData = { main_config: {}, brands: [], menus: {}, events: [] };
         let selectedBrand = null;
         let currentVenue = 'oasis';
         let isInternalBackCall = false; 
@@ -283,6 +283,7 @@
             if (!data.main_config) data.main_config = {};
             if (!data.brands) data.brands = [];
             if (!data.menus) data.menus = {};
+            if (!data.events) data.events = [];
 
             dbData = data;
             switchVenue('oasis'); 
@@ -298,122 +299,38 @@
             return text.replace(/🔥?\s*大麗士獨家加碼.*/g, "").trim();
         }
 
-        function renderStructuredNotice(rawText) {
+        function renderStructuredNotice(events) {
             const container = document.getElementById('dynamic-announcement-box');
             if (!container) return;
-            container.innerHTML = "";
-
-            let cleanNotice = cleanDataText(rawText);
-            if (!cleanNotice || cleanNotice === "") {
-                container.innerHTML = `<p class="text-stone-400 text-center py-2">暫無公告資訊。</p>`;
-                return;
+            container.replaceChildren();
+            const today = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
+            const list = (Array.isArray(events) ? events : []).filter(e => e.date >= today && e.venue === currentVenue)
+                .sort((a,b) => a.date.localeCompare(b.date) || (a.startTime || '').localeCompare(b.startTime || ''));
+            if (!list.length) {
+                const p = document.createElement('p'); p.className = 'text-stone-400 text-center py-2';
+                p.textContent = '暫無近期的活動排程。'; container.appendChild(p); return;
             }
-
-            const now = new Date();
-            const currentDay = now.getDay(); 
-            const daysToSunday = currentDay === 0 ? 0 : 7 - currentDay;
-            const sundayObj = new Date(now);
-            sundayObj.setDate(now.getDate() + daysToSunday);
-            
-            const sundayStr = formatDateString(sundayObj);
-            const currentYear = now.getFullYear();
-
-            const lines = cleanNotice.split('\n');
-            
-            let thisWeekItems = [];
-            let futureItems = [];
-            let pureTextLines = [];
-
-            lines.forEach(line => {
-                let cleanLine = line.trim();
-                if (cleanLine === "") return;
-
-                if (cleanLine.indexOf('|') > -1) {
-                    const parts = cleanLine.split('|');
-                    const datePart = parts[0].trim(); 
-                    const contentPart = parts[1].trim();
-
-                    let shortDate = datePart.substring(0, 5).replace('/', '-'); 
-
-                    let isFuture = false;
-                    if (shortDate.length === 5 && shortDate.indexOf('-') === 2) {
-                        const targetDateStr = `${currentYear}-${shortDate}`; 
-                        if (targetDateStr > sundayStr) {
-                            isFuture = true; 
-                        }
-                    }
-
-                    let typeBadgeHtml = "";
-                    let nameText = contentPart;
-                    const typeMatch = contentPart.match(/^\[(.+?)\]/);
-                    
-                    if (typeMatch) {
-                        const typeName = typeMatch[1];
-                        nameText = contentPart.replace(`[${typeName}]`, "").trim();
-                        
-                        let colorClass = "bg-stone-100 text-stone-600";
-                        if (typeName.indexOf("餐車") > -1) colorClass = "bg-amber-50 text-amber-700 border-amber-200/60";
-                        if (typeName.indexOf("畫展") > -1 || typeName.indexOf("藝文") > -1) colorClass = "bg-purple-50 text-purple-700 border-purple-200/60";
-                        if (typeName.indexOf("市集") > -1) colorClass = "bg-emerald-50 text-emerald-700 border-emerald-200/60";
-                        if (typeName.indexOf("快閃") > -1) colorClass = "bg-blue-50 text-blue-700 border-blue-200/60";
-
-                        typeBadgeHtml = `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded border ${colorClass} tracking-wide flex-shrink-0">${typeName}</span>`;
-                    }
-
-                    const rowHtml = `
-                        <div class="flex items-center justify-start space-x-2 py-1.5 px-2 bg-stone-50/70 rounded-lg border border-stone-100/60 shadow-3xs hover:bg-white transition mb-1">
-                            <span class="text-[10px] font-bold text-stone-700 bg-stone-200/50 px-1.5 py-0.5 rounded font-mono flex-shrink-0">${datePart}</span>
-                            ${typeBadgeHtml}
-                            <span class="text-xs font-bold text-stone-900 tracking-wide truncate flex-1 min-w-0">${nameText}</span>
-                        </div>
-                    `;
-
-                    if (isFuture) {
-                        futureItems.push(rowHtml);
-                    } else {
-                        thisWeekItems.push(rowHtml);
-                    }
-                } else {
-                    if (cleanLine.indexOf('本週') === -1 && cleanLine.indexOf('預告') === -1 && cleanLine.indexOf('活動') === -1) {
-                        pureTextLines.push(`<p class="text-[11px] text-stone-500 pl-2 leading-relaxed">${cleanLine}</p>`);
-                    }
-                }
+            const groups = new Map();
+            list.forEach(e => { if (!groups.has(e.date)) groups.set(e.date, []); groups.get(e.date).push(e); });
+            const weekday = ['日','一','二','三','四','五','六'];
+            groups.forEach((items,date) => {
+                const section = document.createElement('section'); section.className = 'mb-3 space-y-1';
+                const h = document.createElement('h4'); h.className = 'text-xs font-bold text-emerald-700 border-b border-emerald-100 pb-1';
+                const day = new Date(Number(date.slice(0,4)), Number(date.slice(5,7))-1, Number(date.slice(8,10)));
+                const tomorrow = new Date(date === today ? day : new Date(Number(today.slice(0,4)),Number(today.slice(5,7))-1,Number(today.slice(8,10)))); tomorrow.setDate(tomorrow.getDate()+1);
+                h.textContent = (date === today ? '今天 ' : date === formatDateString(tomorrow) ? '明天 ' : '') + date.slice(5).replace('-','/') + '（' + weekday[day.getDay()] + '）';
+                section.appendChild(h);
+                items.forEach(e => {
+                    const row = document.createElement('div'); row.className = 'flex items-center gap-2 py-1.5 px-2 bg-stone-50 rounded-lg border border-stone-100 text-xs';
+                    const time = document.createElement('span'); time.className = 'text-stone-700 whitespace-nowrap';
+                    time.textContent = [e.startTime,e.endTime].filter(Boolean).join('–') || '時間待公布';
+                    const badge = document.createElement('span'); badge.className = 'px-1.5 py-0.5 rounded text-white whitespace-nowrap';
+                    badge.textContent = e.type || '活動'; badge.style.backgroundColor = /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : '#D49A24';
+                    const name = document.createElement('span'); name.className = 'font-bold text-stone-900 min-w-0'; name.textContent = e.title || '';
+                    row.append(time,badge,name); section.appendChild(row);
+                });
+                container.appendChild(section);
             });
-
-            if (pureTextLines.length > 0) {
-                const textBlock = document.createElement('div');
-                textBlock.className = "mb-2 space-y-1";
-                textBlock.innerHTML = pureTextLines.join('');
-                container.appendChild(textBlock);
-            }
-
-            if (thisWeekItems.length > 0) {
-                const thisWeekBlock = document.createElement('div');
-                thisWeekBlock.className = "space-y-1.5";
-                thisWeekBlock.innerHTML = `
-                    <h4 class="text-[10px] font-bold text-emerald-600 tracking-wider mb-1.5 border-b border-emerald-100 pb-0.5 uppercase flex items-center">
-                        <span class="mr-1">🔥</span> 本週活動
-                    </h4>
-                    ${thisWeekItems.join('')}
-                `;
-                container.appendChild(thisWeekBlock);
-            }
-
-            if (futureItems.length > 0) {
-                const futureBlock = document.createElement('div');
-                futureBlock.className = "space-y-1.5 mt-4";
-                futureBlock.innerHTML = `
-                    <h4 class="text-[10px] font-bold text-stone-400 tracking-wider mb-1.5 border-b border-stone-200/60 pb-0.5 uppercase flex items-center">
-                        <span class="mr-1">📅</span> 活動預告
-                    </h4>
-                    ${futureItems.join('')}
-                `;
-                container.appendChild(futureBlock);
-            }
-
-            if (thisWeekItems.length === 0 && futureItems.length === 0 && pureTextLines.length === 0) {
-                container.innerHTML = `<p class="text-stone-400 text-center py-2">暫無近期的活動排程。</p>`;
-            }
         }
 
         function switchVenue(venue) {
@@ -431,7 +348,7 @@
             const annTitleEl = document.getElementById('announcement-title');
             if (annTitleEl) annTitleEl.innerText = "📅 " + title;
             
-            renderStructuredNotice(notice);
+            renderStructuredNotice(dbData.events);
         }
 
         function renderHighDefBrandButtons() {
